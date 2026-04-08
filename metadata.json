@@ -1,0 +1,7 @@
+{
+  "name": "PROFESIONAL | SYNTIweb Digital Solutions Agency",
+  "description": "Estudio creativo inteligente para SYNTIweb. Genera posts de Instagram para SYNTIstudio, SYNTIfood y SYNTIcat usando IA.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}

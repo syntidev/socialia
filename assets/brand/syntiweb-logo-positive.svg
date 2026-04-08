@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="500" height="500">
+  <!--
+    SYNTIweb HIJO — FLAT POSITIVE
+    Sin filtros/sombras. Para favicon, social, print, apps.
+    Bracket: #1a1a1a | Círculo: #4A80E4 | Fondo: transparente
+  -->
+  <path d="M 30,22 L 78,22 L 78,70 Q 78,78 70,78 L 62,78 L 62,38 L 22,38 L 22,30 Q 22,22 30,22 Z" fill="#1a1a1a"/>
+  <circle cx="38" cy="63" r="14" fill="#4A80E4"/>
+</svg>
