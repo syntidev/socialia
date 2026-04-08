@@ -26,8 +26,8 @@ import {
 import { SOCIAL_SYSTEM_PROMPT, PRODUCT_DEFAULTS, VISUAL_ELEMENTS_BY_PRODUCT } from "../constants";
 
 // RESTAURAMOS TUS MODELOS (Los que Gemini te asignó)
-const MODEL_NAME = "gemini-2.5-flash-image"; 
-const TEXT_MODEL = "gemini-3-flash-preview";
+const MODEL_NAME = "gemini-2.0-flash-preview-image-generation";
+const TEXT_MODEL = "gemini-2.0-flash";
 
 export class GeminiService {
   private ai: GoogleGenAI;
