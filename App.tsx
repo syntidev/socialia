@@ -119,6 +119,7 @@ const App: React.FC = () => {
   const [isSealing, setIsSealing] = useState(false);
   const [activePhase, setActivePhase] = useState<AppPhase>(AppPhase.PHASE_01);
   const [isAdvancedMode, setIsAdvancedMode] = useState(false);
+  const [cooldown, setCooldown] = useState(false);
 
   const [creationMode, setCreationMode] = useState<CreationMode>(CreationMode.POST);
   const [carouselConfig, setCarouselConfig] = useState<CarouselConfig>({
@@ -302,6 +303,10 @@ const App: React.FC = () => {
       const response = await geminiService.generateCreativePost(completeRequest);
       setResult(response);
       setActivePhase(AppPhase.PHASE_02);
+      
+      // Activar cooldown de 3 segundos
+      setCooldown(true);
+      setTimeout(() => setCooldown(false), 3000);
     } catch (err: any) {
       setError(err.message || 'Ocurrió un error inesperado.');
     } finally {
@@ -407,6 +412,10 @@ const App: React.FC = () => {
       
       console.log('DEBUG: Análisis recibido con éxito:', analysis);
       setSocialAnalysis(analysis);
+      
+      // Activar cooldown de 3 segundos
+      setCooldown(true);
+      setTimeout(() => setCooldown(false), 3000);
     } catch (err: any) {
       console.error('DEBUG: Error en handleAnalyzeSocial:', err);
       setError(err.message || 'Error al analizar la estrategia social.');
@@ -1364,15 +1373,20 @@ const App: React.FC = () => {
             <div className="pt-6 space-y-4">
               <button
                 onClick={handleGenerate}
-                disabled={loading}
+                disabled={loading || cooldown}
                 className={`w-full py-4 rounded-2xl font-black text-[11px] tracking-[0.2em] text-white shadow-strong transition-all flex items-center justify-center gap-3 ${
-                  loading ? 'bg-slate-700 cursor-not-allowed opacity-50' : 'bg-brand-primary hover:bg-brand-primary/90 active:scale-95'
+                  loading || cooldown ? 'bg-slate-700 cursor-not-allowed opacity-50' : 'bg-brand-primary hover:bg-brand-primary/90 active:scale-95'
                 }`}
               >
                 {loading ? (
                   <>
                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
                     GENERANDO...
+                  </>
+                ) : cooldown ? (
+                  <>
+                    <Icon icon="tabler:clock" className="w-5 h-5" />
+                    ESPERA...
                   </>
                 ) : (
                   <>
@@ -1394,11 +1408,13 @@ const App: React.FC = () => {
 
               <button
                 onClick={handleAnalyzeSocial}
-                disabled={isAnalyzing}
-                className="w-full py-4 rounded-2xl font-black text-[11px] tracking-[0.2em] text-slate-400 border-2 border-slate-700 hover:border-brand-primary hover:text-brand-primary transition-all flex items-center justify-center gap-3"
+                disabled={isAnalyzing || cooldown}
+                className={`w-full py-4 rounded-2xl font-black text-[11px] tracking-[0.2em] text-slate-400 border-2 border-slate-700 hover:border-brand-primary hover:text-brand-primary transition-all flex items-center justify-center gap-3 ${
+                  cooldown ? 'opacity-50 cursor-not-allowed' : ''
+                }`}
               >
-                <Icon icon={isAnalyzing ? "tabler:loader-2" : "tabler:rocket"} className={`w-5 h-5 ${isAnalyzing ? 'animate-spin' : ''}`} />
-                {isAnalyzing ? 'ANALIZANDO...' : 'SALTAR A ESTRATEGIA'}
+                <Icon icon={isAnalyzing ? "tabler:loader-2" : cooldown ? "tabler:clock" : "tabler:rocket"} className={`w-5 h-5 ${isAnalyzing ? 'animate-spin' : ''}`} />
+                {isAnalyzing ? 'ANALIZANDO...' : cooldown ? 'ESPERA...' : 'SALTAR A ESTRATEGIA'}
               </button>
             </div>
 
@@ -1601,11 +1617,11 @@ const App: React.FC = () => {
                     </button>
                     <button
                       onClick={handleAnalyzeSocial}
-                      disabled={!isPhaseEnabled(AppPhase.PHASE_03) || isAnalyzing}
+                      disabled={!isPhaseEnabled(AppPhase.PHASE_03) || isAnalyzing || cooldown}
                       className="flex-[2] py-4 bg-green-600 hover:bg-green-700 text-white rounded-2xl font-black text-[10px] tracking-widest flex items-center justify-center gap-3 transition-all shadow-strong disabled:opacity-30 disabled:grayscale"
                     >
-                      <Icon icon={isAnalyzing ? "tabler:loader-2" : "tabler:rocket"} className={`w-6 h-6 ${isAnalyzing ? 'animate-spin' : ''}`} />
-                      {isAnalyzing ? 'ANALIZANDO...' : 'CONTINUAR A ESTRATEGIA'}
+                      <Icon icon={isAnalyzing ? "tabler:loader-2" : cooldown ? "tabler:clock" : "tabler:rocket"} className={`w-6 h-6 ${isAnalyzing ? 'animate-spin' : ''}`} />
+                      {isAnalyzing ? 'ANALIZANDO...' : cooldown ? 'ESPERA...' : 'CONTINUAR A ESTRATEGIA'}
                     </button>
                   </div>
                 )}

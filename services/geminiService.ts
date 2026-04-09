@@ -38,6 +38,29 @@ export class GeminiService {
     });
   }
 
+  private async withRetry<T>(fn: () => Promise<T>, maxRetries = 3, delay = 2000): Promise<T> {
+    let lastError: any;
+    for (let i = 0; i < maxRetries; i++) {
+      try {
+        return await fn();
+      } catch (error: any) {
+        lastError = error;
+        const isRetryable = error.message?.includes('503') || 
+                           error.message?.includes('UNAVAILABLE') || 
+                           error.message?.includes('high demand');
+        
+        if (isRetryable && i < maxRetries - 1) {
+          const waitTime = delay * Math.pow(2, i); // Exponential backoff
+          console.warn(`Gemini API saturada (503). Reintentando en ${waitTime}ms... (Intento ${i + 1}/${maxRetries})`);
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+          continue;
+        }
+        throw error;
+      }
+    }
+    throw lastError;
+  }
+
   public classifyAndComplete(
     productType: ProductType,
     postObjective: PostObjective,
@@ -495,11 +518,11 @@ NEGATIVE: text, words, letters, logos, watermarks, screen on the back of the pho
         IMPORTANTE: Todo en ESPAÑOL, respetando acentos y ortografía. Sin palabras en inglés.
       `;
 
-      const copyResponse = await this.ai.models.generateContent({
+      const copyResponse = await this.withRetry(() => this.ai.models.generateContent({
         model: TEXT_MODEL,
         contents: [{ parts: [{ text: copyPrompt }] }],
         config: { responseMimeType: "application/json" }
-      });
+      }));
 
       const copyData = JSON.parse(copyResponse.text || "{}");
       
@@ -524,7 +547,7 @@ NEGATIVE: text, words, letters, logos, watermarks, screen on the back of the pho
           ? `${this.buildHumanScenePrompt(finalData)}\n\nNEGATIVE PROMPT: ${negativePrompt}`
           : `${this.buildSmartPrompt(finalData)}\n\nNEGATIVE PROMPT: ${negativePrompt}`;
 
-      const imageResponse = await this.ai.models.generateContent({
+      const imageResponse = await this.withRetry(() => this.ai.models.generateContent({
         model: MODEL_NAME, 
         contents: [{
           parts: [
@@ -537,7 +560,7 @@ NEGATIVE: text, words, letters, logos, watermarks, screen on the back of the pho
             aspectRatio: data.format as any
           }
         }
-      });
+      }));
 
       let imageUrl = '';
       const parts = imageResponse.candidates?.[0]?.content?.parts;
@@ -567,7 +590,7 @@ NEGATIVE: text, words, letters, logos, watermarks, screen on the back of the pho
     productType: string,
     postObjective: string
   ): Promise<Array<{ hook: string; benefit: string }>> {
-    const response = await this.ai.models.generateContent({
+    const response = await this.withRetry(() => this.ai.models.generateContent({
       model: TEXT_MODEL,
       config: {
         responseMimeType: 'application/json',
@@ -600,7 +623,7 @@ Progresión: el slide 1 plantea el problema, los intermedios desarrollan, el úl
 Responde SOLO con el array JSON, sin markdown, sin explicaciones.`
         }]
       }]
-    });
+    }));
 
     const text = response.text;
     if (!text) throw new Error('No response from Gemini text model');
@@ -622,10 +645,10 @@ Responde SOLO con el array JSON, sin markdown, sin explicaciones.`
         const slide = slides[i];
         const prompt = this.buildCarouselSlidePrompt(slide, productType, i + 1, slides.length);
 
-        const response = await this.ai.models.generateContent({
+        const response = await this.withRetry(() => this.ai.models.generateContent({
           model: MODEL_NAME,
           contents: [{ role: 'user', parts: [{ text: prompt }] }]
-        });
+        }));
 
         const imagePart = response.candidates?.[0]?.content?.parts?.find(
           (p: any) => p.inlineData?.mimeType?.startsWith('image/')
@@ -705,7 +728,7 @@ Format: 3:4 portrait, high resolution.`;
     ];
 
     try {
-      const result = await this.ai.models.generateContent({
+      const result = await this.withRetry(() => this.ai.models.generateContent({
         model: TEXT_MODEL,
         contents: [{ parts }],
         config: {
@@ -721,7 +744,7 @@ Format: 3:4 portrait, high resolution.`;
             required: ["hasTitle", "hasSubtitle"]
           }
         }
-      });
+      }));
 
       const response = result.text || "{}";
       return JSON.parse(response);
@@ -757,7 +780,7 @@ Format: 3:4 portrait, high resolution.`;
     }
 
     try {
-      const response = await this.ai.models.generateContent({
+      const response = await this.withRetry(() => this.ai.models.generateContent({
         model: TEXT_MODEL,
         contents: [{ parts }],
         config: {
@@ -818,7 +841,7 @@ Format: 3:4 portrait, high resolution.`;
             required: ["hook", "body", "cta", "question", "hashtags", "hooks", "strategy", "visualAdvice", "seo", "ads", "community"]
           }
         }
-      });
+      }));
 
       console.log('Raw Gemini Response:', response);
       const textResponse = response.text;
