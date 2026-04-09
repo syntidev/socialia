@@ -110,16 +110,13 @@ const App: React.FC = () => {
 
   const [reviewedText, setReviewedText] = useState('');
   const [reviewedSecondaryText, setReviewedSecondaryText] = useState('');
-  const [showBufferModal, setShowBufferModal] = useState(false);
+  const [showPublishModal, setShowPublishModal] = useState(false);
   const [bufferSchedule, setBufferSchedule] = useState('');
   const [suggestedTime, setSuggestedTime] = useState('');
-  const [bufferProfiles, setBufferProfiles] = useState<any[]>([]);
-  const [selectedProfileId, setSelectedProfileId] = useState('');
-  const [isSendingToBuffer, setIsSendingToBuffer] = useState(false);
-  const [bufferSuccess, setBufferSuccess] = useState(false);
+  const [isSending, setIsSending] = useState(false);
+  const [sendSuccess, setSendSuccess] = useState(false);
   const [imagenSellada, setImagenSellada] = useState<string | null>(null);
   const [isSealing, setIsSealing] = useState(false);
-  const [bufferError, setBufferError] = useState<string | null>(null);
   const [activePhase, setActivePhase] = useState<AppPhase>(AppPhase.PHASE_01);
   const [isAdvancedMode, setIsAdvancedMode] = useState(false);
 
@@ -243,10 +240,6 @@ const App: React.FC = () => {
     }
   };
 
-  useEffect(() => {
-    console.log('Estado socialAnalysis:', socialAnalysis);
-  }, [socialAnalysis]);
-
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -313,75 +306,6 @@ const App: React.FC = () => {
       setError(err.message || 'Ocurrió un error inesperado.');
     } finally {
       setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (showBufferModal && bufferProfiles.length === 0) {
-      fetchBufferChannels();
-    }
-  }, [showBufferModal]);
-
-  const fetchBufferChannels = async () => {
-    setBufferError(null);
-    try {
-      const token = import.meta.env.VITE_BUFFER_ACCESS_TOKEN;
-      if (!token) {
-        setBufferError('Token de Buffer no configurado');
-        return;
-      }
-
-      // 1. Get Organization
-      const orgResponse = await fetch('/api/buffer.ts', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          query: `query { account { organizations { id name } } }`
-        })
-      });
-      const orgData = await orgResponse.json();
-      const orgId = orgData.data?.account?.organizations?.[0]?.id;
-
-      if (!orgId) throw new Error('No se encontró organización en Buffer');
-
-      // 2. Get Channels - Using direct interpolation to avoid OrganizationId type mismatch
-      const channelsResponse = await fetch('/api/buffer.ts', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          query: `
-            query GetChannels {
-              channels(input: { organizationId: "${orgId}" }) {
-                id
-                name
-                displayName
-                service
-                avatar
-              }
-            }
-          `
-        })
-      });
-      const channelsData = await channelsResponse.json();
-      const channels = channelsData.data?.channels;
-
-      if (Array.isArray(channels)) {
-        setBufferProfiles(channels);
-        if (channels.length > 0) {
-          setSelectedProfileId(channels[0].id);
-        }
-      } else {
-        throw new Error('Respuesta de canales inesperada');
-      }
-    } catch (err: any) {
-      console.error('Error fetching Buffer channels:', err);
-      setBufferError(err.message || 'Error al conectar con Buffer');
     }
   };
 
@@ -567,80 +491,65 @@ const App: React.FC = () => {
     }
   };
 
-  const sendToBuffer = async () => {
+  const sendToMake = async () => {
     const finalImage = imagenSellada || result?.imageUrl || formData.base64Image;
-    if (!finalImage || !socialAnalysis || !selectedProfileId) return;
+    if (!finalImage || !socialAnalysis) return;
     
-    setIsSendingToBuffer(true);
+    setIsSending(true);
     setError(null);
 
     try {
-      // 1. Subir imagen a Cloudinary
+      // 1. Subir imagen a Cloudinary (Make necesita una URL pública)
       const cloudinaryUrl = await uploadToCloudinary(finalImage);
       
-      // 2. Armar caption
-      const captionLines = [
-        socialAnalysis.hook,
-        socialAnalysis.body,
-        socialAnalysis.cta,
-        socialAnalysis.question,
-        socialAnalysis.hashtags.map((h: string) => `#${h}`).join('\\n\\n')
-      ].join('\\n\\n');
-      const caption = captionLines.replace(/"/g, '\\"');
-      
-      // 3. Determinar modo de programación
-      const hasSchedule = bufferSchedule && bufferSchedule.trim() !== '';
-      const dueAtLine = hasSchedule ? `dueAt: "${new Date(bufferSchedule).toISOString()}",` : '';
-      const modeLine = hasSchedule ? 'customScheduled' : 'addToQueue';
+      // 2. Armar el paquete de datos (Data Bundle)
+      const payload = {
+        image_url: cloudinaryUrl,
+        hook: socialAnalysis.hook,
+        body: socialAnalysis.body,
+        cta: socialAnalysis.cta,
+        question: socialAnalysis.question,
+        hashtags: socialAnalysis.hashtags,
+        full_caption: [
+          socialAnalysis.hook,
+          socialAnalysis.body,
+          socialAnalysis.cta,
+          socialAnalysis.question,
+          socialAnalysis.hashtags.map((h: string) => `#${h}`).join(' ')
+        ].join('\n\n'),
+        scheduled_at: bufferSchedule || null,
+        timestamp: new Date().toISOString(),
+        user_email: 'syntidev@gmail.com'
+      };
 
-      // 4. Mutation GraphQL
-      const query = `
-        mutation CreatePost {
-          createPost(input: {
-            text: "${caption}",
-            channelId: "${selectedProfileId}",
-            schedulingType: automatic,
-            mode: ${modeLine},
-            ${dueAtLine}
-            assets: {
-              images: [{ url: "${cloudinaryUrl}" }]
-            }
-          }) {
-            ... on PostActionSuccess {
-              post { id text dueAt }
-            }
-            ... on MutationError {
-              message
-            }
-            ... on UnexpectedError {
-              message
-            }
-          }
-        }
-      `;
+      const makeUrl = import.meta.env.VITE_MAKE_WEBHOOK_URL;
+      if (!makeUrl) {
+        throw new Error('URL de Webhook de Make no configurada. Agrégala en Settings -> Secrets como VITE_MAKE_WEBHOOK_URL');
+      }
 
-      const response = await fetch('/api/buffer.ts', {
+      const response = await fetch(makeUrl, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_BUFFER_ACCESS_TOKEN}`
+          'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ query })
+        body: JSON.stringify(payload)
       });
 
-      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(`Error en Make.com: ${response.statusText}`);
+      }
       
-      if (data.errors) throw new Error(data.errors[0].message);
-      if (data.data?.createPost?.__typename === 'UnexpectedError') throw new Error(data.data.createPost.message);
-      if (data.data?.createPost?.__typename === 'MutationError') throw new Error(data.data.createPost.message);
-      
-      setBufferSuccess(true);
-      setTimeout(() => { setBufferSuccess(false); setShowBufferModal(false); }, 3000);
+      setSendSuccess(true);
+      setTimeout(() => { 
+        setSendSuccess(false); 
+        setShowPublishModal(false); 
+      }, 3000);
       
     } catch (err: any) {
+      console.error('Error enviando a Make:', err);
       setError(err.message);
     } finally {
-      setIsSendingToBuffer(false);
+      setIsSending(false);
     }
   };
 
@@ -1743,12 +1652,12 @@ const App: React.FC = () => {
           
           <div className="flex items-center gap-4">
             <button
-              onClick={() => setShowBufferModal(true)}
+              onClick={() => setShowPublishModal(true)}
               disabled={!socialAnalysis}
-              className="px-8 py-4 bg-slate-800 hover:bg-slate-700 text-white rounded-2xl font-black text-[11px] tracking-[0.2em] flex items-center justify-center gap-3 transition-all shadow-strong disabled:opacity-30"
+              className="px-8 py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black text-[11px] tracking-[0.2em] flex items-center justify-center gap-3 transition-all shadow-strong disabled:opacity-30"
             >
-              <Icon icon="tabler:brand-buffer" className="w-6 h-6" />
-              ENVIAR A BUFFER
+              <Icon icon="tabler:rocket" className="w-6 h-6" />
+              PUBLICAR CONTENIDO
             </button>
           </div>
         </div>
@@ -1826,17 +1735,17 @@ const App: React.FC = () => {
         </p>
       </footer>
 
-      {/* Buffer Modal */}
-      {showBufferModal && (
+      {/* Publish Modal (Make.com) */}
+      {showPublishModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-300">
-            <div className="bg-[#323b43] p-6 text-white flex items-center justify-between">
+            <div className="bg-indigo-600 p-6 text-white flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <Icon icon="tabler:brand-buffer" className="w-6 h-6" />
-                <h3 className="text-sm font-black uppercase tracking-widest">Programar en Buffer</h3>
+                <Icon icon="tabler:rocket" className="w-6 h-6" />
+                <h3 className="text-sm font-black uppercase tracking-widest">Publicar Contenido</h3>
               </div>
               <button 
-                onClick={() => setShowBufferModal(false)}
+                onClick={() => setShowPublishModal(false)}
                 className="p-1 hover:bg-white/10 rounded-lg transition-colors"
               >
                 <XMarkIcon className="w-6 h-6" />
@@ -1844,54 +1753,58 @@ const App: React.FC = () => {
             </div>
 
             <div className="p-8 space-y-6">
-              {bufferError && (
-                <div className="p-4 bg-red-50 border-2 border-red-100 rounded-2xl text-red-600 text-xs font-bold flex items-center gap-2">
-                  <NoSymbolIcon className="w-5 h-5" />
-                  {bufferError}
-                </div>
-              )}
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.15em] mb-2 block">Perfil de Red Social</label>
-                <select 
-                  className="w-full bg-white border-2 border-[#CBD5E1] text-gray-900 focus:border-[#4A80E4] focus:ring-4 focus:ring-[#4A80E4]/10 placeholder:text-gray-400 rounded-xl transition-all outline-none px-4 py-3 text-xs"
-                  value={selectedProfileId}
-                  onChange={(e) => setSelectedProfileId(e.target.value)}
-                  disabled={!!bufferError}
+              <div className="space-y-4">
+                <button
+                  onClick={sendToMake}
+                  disabled={isSending || !socialAnalysis}
+                  className={`w-full py-5 rounded-2xl font-black text-sm tracking-widest text-white shadow-xl transition-all flex flex-col items-center justify-center gap-1 ${
+                    sendSuccess ? 'bg-green-500' : 'bg-indigo-600 hover:bg-indigo-700 hover:scale-[1.02]'
+                  } disabled:opacity-50 disabled:cursor-not-allowed border-b-4 border-indigo-900/30`}
                 >
-                    {bufferProfiles.length > 0 ? (
-                      bufferProfiles.map(profile => (
-                        <option key={profile.id} value={profile.id}>
-                          {(profile.service || 'Social').toUpperCase()} - {profile.displayName || profile.name || 'Perfil'}
-                        </option>
-                      ))
-                    ) : (
-                    <option value="">{bufferError ? 'Error al cargar perfiles' : 'Cargando perfiles...'}</option>
+                  {isSending ? (
+                    <div className="flex items-center gap-3">
+                      <div className="w-5 h-5 border-3 border-white/30 border-t-white rounded-full animate-spin"></div>
+                      <span>PROCESANDO ENVÍO...</span>
+                    </div>
+                  ) : sendSuccess ? (
+                    <div className="flex items-center gap-3">
+                      <CheckIcon className="w-6 h-6" />
+                      <span>¡ENVIADO CON ÉXITO!</span>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="flex items-center gap-3">
+                        <Icon icon="tabler:bolt" className="w-6 h-6 text-yellow-300" />
+                        <span>ENVIAR A MAKE.COM</span>
+                      </div>
+                      <span className="text-[9px] opacity-70 font-bold tracking-normal">Automatización Directa</span>
+                    </>
                   )}
-                </select>
+                </button>
               </div>
 
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
-                  <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.15em] mb-2 block">Fecha y Hora de Publicación</label>
+                  <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.15em] mb-2 block">Programación (Opcional)</label>
                   <button 
                     onClick={() => setBufferSchedule('')}
-                    className="text-[10px] font-bold text-[#4A80E4] hover:underline"
+                    className="text-[10px] font-bold text-indigo-600 hover:underline"
                   >
                     Publicar ahora
                   </button>
                 </div>
                 
                 {suggestedTime && (
-                  <div className="mb-3 p-3 bg-[#4A80E4]/5 border border-[#4A80E4]/10 rounded-xl flex items-center justify-between">
+                  <div className="mb-3 p-3 bg-indigo-50 border border-indigo-100 rounded-xl flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <SparklesIcon className="w-3.5 h-3.5 text-[#4A80E4]" />
-                      <span className="text-[10px] text-[#4A80E4] font-medium leading-tight">
+                      <SparklesIcon className="w-3.5 h-3.5 text-indigo-600" />
+                      <span className="text-[10px] text-indigo-600 font-medium leading-tight">
                         Sugerencia IA: <span className="font-bold">{suggestedTime}</span>
                       </span>
                     </div>
                     <button 
                       onClick={applySuggestedTime}
-                      className="px-2 py-1 bg-[#4A80E4] text-white text-[9px] font-bold rounded-lg hover:bg-[#3a6fd3] transition-colors"
+                      className="px-2 py-1 bg-indigo-600 text-white text-[9px] font-bold rounded-lg hover:bg-indigo-700 transition-colors"
                     >
                       APLICAR
                     </button>
@@ -1902,7 +1815,7 @@ const App: React.FC = () => {
                   <ClockIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                   <input 
                     type="datetime-local"
-                    className="w-full pl-10 pr-4 py-3 bg-white border-2 border-[#CBD5E1] text-gray-900 focus:border-[#4A80E4] focus:ring-4 focus:ring-[#4A80E4]/10 placeholder:text-gray-400 rounded-xl transition-all outline-none text-xs font-mono"
+                    className="w-full pl-10 pr-4 py-3 bg-white border-2 border-[#CBD5E1] text-gray-900 focus:border-indigo-600 focus:ring-4 focus:ring-indigo-600/10 placeholder:text-gray-400 rounded-xl transition-all outline-none text-xs font-mono"
                     value={bufferSchedule}
                     onChange={(e) => setBufferSchedule(e.target.value)}
                   />
@@ -1914,7 +1827,7 @@ const App: React.FC = () => {
                 <div className="p-5 bg-gray-50 border-2 border-gray-100 rounded-2xl text-xs text-gray-700 max-h-48 overflow-y-auto leading-relaxed whitespace-pre-wrap">
                   {socialAnalysis ? (
                     <>
-                      <span className="font-black text-[#4A80E4]">{socialAnalysis.hook}</span>
+                      <span className="font-black text-indigo-600">{socialAnalysis.hook}</span>
                       {"\n\n"}
                       {socialAnalysis.body}
                       {"\n\n"}
@@ -1930,33 +1843,6 @@ const App: React.FC = () => {
                     <p className="italic text-gray-400">Genera la estrategia para ver el caption unificado.</p>
                   )}
                 </div>
-              </div>
-
-              <div className="pt-4">
-                <button
-                  onClick={sendToBuffer}
-                  disabled={isSendingToBuffer || !socialAnalysis}
-                  className={`w-full py-4 rounded-2xl font-black text-xs tracking-widest text-white shadow-lg transition-all flex items-center justify-center gap-3 ${
-                    bufferSuccess ? 'bg-green-500' : 'bg-[#4A80E4] hover:bg-[#3a6fd3]'
-                  } disabled:opacity-50 disabled:cursor-not-allowed`}
-                >
-                  {isSendingToBuffer ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                      ENVIANDO...
-                    </>
-                  ) : bufferSuccess ? (
-                    <>
-                      <CheckIcon className="w-5 h-5" />
-                      ¡PUBLICACIÓN PROGRAMADA!
-                    </>
-                  ) : (
-                    <>
-                      <PaperAirplaneIcon className="w-5 h-5" />
-                      CONFIRMAR ENVÍO A BUFFER
-                    </>
-                  )}
-                </button>
               </div>
             </div>
           </div>
