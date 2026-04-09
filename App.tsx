@@ -332,7 +332,7 @@ const App: React.FC = () => {
       }
 
       // 1. Get Organization
-      const orgResponse = await fetch('/api/buffer', {
+      const orgResponse = await fetch('/api/buffer.ts', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -348,7 +348,7 @@ const App: React.FC = () => {
       if (!orgId) throw new Error('No se encontró organización en Buffer');
 
       // 2. Get Channels - Using direct interpolation to avoid OrganizationId type mismatch
-      const channelsResponse = await fetch('/api/buffer', {
+      const channelsResponse = await fetch('/api/buffer.ts', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -619,7 +619,7 @@ const App: React.FC = () => {
         }
       `;
 
-      const response = await fetch('/api/buffer', {
+      const response = await fetch('/api/buffer.ts', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
