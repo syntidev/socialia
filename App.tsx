@@ -190,12 +190,8 @@ const App: React.FC = () => {
   }, []);
 
 
-  // Sync reviewed texts with inputs until manually edited
-  useEffect(() => {
-    setReviewedText(formData.textInput);
-    setReviewedSecondaryText(formData.secondaryText);
-  }, [formData.textInput, formData.secondaryText]);
-
+  // Remove the problematic sync useEffect that was overwriting detected text
+  
   useEffect(() => {
     setCarouselConfig(p => ({ ...p, productType: formData.productType }));
   }, [formData.productType]);
@@ -292,6 +288,11 @@ const App: React.FC = () => {
     setResult(null);
     setSocialAnalysis(null);
     setImagenSellada(null);
+    
+    // Sync reviewed texts from formData when generating new art
+    setReviewedText(formData.textInput);
+    setReviewedSecondaryText(formData.secondaryText);
+    
     resetVisualEditor(formData.preset || PresetType.DARK_NAVY);
 
     try {
@@ -470,9 +471,11 @@ const App: React.FC = () => {
       console.log('DEBUG: Imagen optimizada (longitud):', optimizedImage.length);
       
       console.log('DEBUG: Llamando a geminiService.analyzeImageAndGeneratePost...');
+      const combinedTopic = `${reviewedText} ${reviewedSecondaryText}`.trim() || formData.textInput || formData.customPrompt || '';
+      
       const analysis = await geminiService.analyzeImageAndGeneratePost(
         optimizedImage,
-        reviewedText || formData.textInput || formData.customPrompt || '',
+        combinedTopic,
         formData.format === FormatType.FEED ? PostFormat.FEED_PORTRAIT : PostFormat.REEL_STORY
       );
       
@@ -1682,12 +1685,12 @@ const App: React.FC = () => {
                       DESCARGAR
                     </button>
                     <button
-                      onClick={() => setActivePhase(AppPhase.PHASE_03)}
-                      disabled={!isPhaseEnabled(AppPhase.PHASE_03)}
+                      onClick={handleAnalyzeSocial}
+                      disabled={!isPhaseEnabled(AppPhase.PHASE_03) || isAnalyzing}
                       className="flex-[2] py-4 bg-green-600 hover:bg-green-700 text-white rounded-2xl font-black text-[10px] tracking-widest flex items-center justify-center gap-3 transition-all shadow-strong disabled:opacity-30 disabled:grayscale"
                     >
-                      <Icon icon="tabler:rocket" className="w-6 h-6" />
-                      CONTINUAR A ESTRATEGIA
+                      <Icon icon={isAnalyzing ? "tabler:loader-2" : "tabler:rocket"} className={`w-6 h-6 ${isAnalyzing ? 'animate-spin' : ''}`} />
+                      {isAnalyzing ? 'ANALIZANDO...' : 'CONTINUAR A ESTRATEGIA'}
                     </button>
                   </div>
                 )}
