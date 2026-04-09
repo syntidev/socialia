@@ -23,7 +23,6 @@ interface PostPreviewProps {
 }
 
 const BRAND_COLORS = ['#ffffff', '#111827', '#4980E4', '#EC6B0B', '#10B981', '#EF4444', '#8B5CF6', '#F59E0B'];
-const SNAP_ZONES = [0, 0.25, 0.5, 0.75, 1]; // for grid snapping
 
 const PostPreview = forwardRef<HTMLDivElement, PostPreviewProps>(({
   image,
@@ -45,7 +44,6 @@ const PostPreview = forwardRef<HTMLDivElement, PostPreviewProps>(({
   const isReel = format === PostFormat.REEL_STORY;
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const [showGrid, setShowGrid] = useState(false);
   const [activeEl, setActiveEl] = useState<'title' | 'subtitle' | 'logo' | null>(null);
 
   const LogoComponent = editorState?.logoType === 'positive' ? LogoPositive : LogoNegative;
@@ -60,28 +58,20 @@ const PostPreview = forwardRef<HTMLDivElement, PostPreviewProps>(({
   const handleDragEnd = (el: 'title' | 'subtitle' | 'logo', info: any) => {
     if (!editorState || !containerRef.current) return;
     
-    const bounds = containerRef.current.getBoundingClientRect();
     const offset = info.offset || { x: 0, y: 0 };
     
+    // Threshold to prevent accidental moves on click
+    if (Math.abs(offset.x) < 2 && Math.abs(offset.y) < 2) return;
+
     const currentPos = el === 'title' ? (editorState.titlePos || { x: 0, y: 24 }) : 
                      el === 'subtitle' ? (editorState.subtitlePos || { x: 0, y: 300 }) : 
                      (editorState.logoPos || { x: 85, y: 340 });
 
-    let x = Math.round(currentPos.x + (offset.x || 0));
-    let y = Math.round(currentPos.y + (offset.y || 0));
+    const x = Math.round(currentPos.x + (offset.x || 0));
+    const y = Math.round(currentPos.y + (offset.y || 0));
     
-    // Clamp values to stay within container
-    const padding = 20;
-    if (el === 'logo') {
-      x = Math.max(padding, Math.min(x, bounds.width - (editorState.logoSize || 110) - padding));
-      y = Math.max(padding, Math.min(y, bounds.height - (editorState.logoSize || 110) * 0.5 - padding));
-    } else {
-      // For text, we only care about Y
-      y = Math.max(0, Math.min(y, bounds.height - 60));
-    }
-
-    if (el === 'title') update({ titlePos: { x: 0, y } });
-    else if (el === 'subtitle') update({ subtitlePos: { x: 0, y } });
+    if (el === 'title') update({ titlePos: { x, y } });
+    else if (el === 'subtitle') update({ subtitlePos: { x, y } });
     else if (el === 'logo') update({ logoPos: { x, y } });
   };
 
@@ -137,26 +127,28 @@ const PostPreview = forwardRef<HTMLDivElement, PostPreviewProps>(({
   );
 
   // Align buttons
+  // Align row
   const AlignRow = ({ label, value, onChange }: {
     label: string;
     value: 'left' | 'center' | 'right';
     onChange: (v: 'left' | 'center' | 'right') => void;
   }) => (
-    <div className="flex items-center justify-between">
-      <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{label}</span>
-      <div className="flex gap-1 bg-slate-100 p-1 rounded-lg">
-        {(['left', 'center', 'right'] as const).map((a, i) => {
-          const Icon = [AlignLeft, AlignCenter, AlignRight][i];
-          return (
-            <button
-              key={a}
-              onClick={() => onChange(a)}
-              className={`p-1.5 rounded-md transition-all ${value === a ? 'bg-white shadow-sm text-[#4980E4]' : 'text-slate-400 hover:text-slate-600'}`}
-            >
-              <Icon size={12} />
-            </button>
-          );
-        })}
+    <div className="flex flex-col gap-2">
+      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{label}</span>
+      <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
+        {[
+          { id: 'left', icon: AlignLeft },
+          { id: 'center', icon: AlignCenter },
+          { id: 'right', icon: AlignRight },
+        ].map(opt => (
+          <button
+            key={opt.id}
+            onClick={() => onChange(opt.id as any)}
+            className={`flex-1 flex items-center justify-center py-2 rounded-lg transition-all ${value === opt.id ? 'bg-white shadow-sm text-brand-primary' : 'text-slate-400 hover:text-slate-600'}`}
+          >
+            <opt.icon size={16} />
+          </button>
+        ))}
       </div>
     </div>
   );
@@ -222,23 +214,6 @@ const PostPreview = forwardRef<HTMLDivElement, PostPreviewProps>(({
             className={`w-full bg-slate-100 relative ${dimensions.aspect} overflow-hidden`}
             style={{ cursor: 'default' }}
           >
-            {/* Grid overlay */}
-            {showGrid && (
-              <div className="absolute inset-0 z-[100] pointer-events-none">
-                <div className="absolute inset-0 opacity-30">
-                  {/* Vertical lines */}
-                  <div className="absolute left-1/3 top-0 bottom-0 w-[1px] bg-[#4980E4]" />
-                  <div className="absolute left-2/3 top-0 bottom-0 w-[1px] bg-[#4980E4]" />
-                  {/* Horizontal lines */}
-                  <div className="absolute top-1/3 left-0 right-0 h-[1px] bg-[#4980E4]" />
-                  <div className="absolute top-2/3 left-0 right-0 h-[1px] bg-[#4980E4]" />
-                  {/* Center lines */}
-                  <div className="absolute left-1/2 top-0 bottom-0 w-[1px] bg-[#4980E4] opacity-50 border-l border-dashed border-white" />
-                  <div className="absolute top-1/2 left-0 right-0 h-[1px] bg-[#4980E4] opacity-50 border-t border-dashed border-white" />
-                </div>
-              </div>
-            )}
-
             {/* Image */}
             {image ? (
               <img src={image} alt="Preview" className="w-full h-full object-cover select-none" crossOrigin="anonymous" draggable={false} />
@@ -252,15 +227,15 @@ const PostPreview = forwardRef<HTMLDivElement, PostPreviewProps>(({
             {/* Title overlay */}
             {editorState?.showTitle !== false && mainText && image && (
               <motion.div
-                drag="y" 
+                drag
                 dragConstraints={containerRef} 
-                dragElastic={0.1}
+                dragElastic={0}
                 dragMomentum={false}
                 onDragStart={() => setActiveEl('title')}
                 onDragEnd={(_, info) => handleDragEnd('title', info)}
                 style={{
                   position: 'absolute',
-                  left: 0,
+                  left: editorState?.titlePos?.x ?? 0,
                   top: editorState?.titlePos?.y ?? 24,
                   x: 0, y: 0,
                   pointerEvents: 'auto', cursor: 'grab',
@@ -288,15 +263,15 @@ const PostPreview = forwardRef<HTMLDivElement, PostPreviewProps>(({
             {/* Subtitle overlay */}
             {editorState?.showSubtitle !== false && secondaryText && image && (
               <motion.div
-                drag="y" 
+                drag
                 dragConstraints={containerRef} 
-                dragElastic={0.1}
+                dragElastic={0}
                 dragMomentum={false}
                 onDragStart={() => setActiveEl('subtitle')}
                 onDragEnd={(_, info) => handleDragEnd('subtitle', info)}
                 style={{
                   position: 'absolute',
-                  left: 0,
+                  left: editorState?.subtitlePos?.x ?? 0,
                   top: editorState?.subtitlePos?.y ?? 300,
                   x: 0, y: 0,
                   pointerEvents: 'auto', cursor: 'grab',
@@ -325,7 +300,7 @@ const PostPreview = forwardRef<HTMLDivElement, PostPreviewProps>(({
               <motion.div
                 drag 
                 dragConstraints={containerRef} 
-                dragElastic={0.1}
+                dragElastic={0}
                 dragMomentum={false}
                 onDragStart={() => setActiveEl('logo')}
                 onDragEnd={(_, info) => handleDragEnd('logo', info)}
@@ -397,15 +372,8 @@ const PostPreview = forwardRef<HTMLDivElement, PostPreviewProps>(({
             </div>
             <div className="flex items-center gap-2">
               <button
-                onClick={() => setShowGrid(g => !g)}
-                className={`w-10 h-10 flex items-center justify-center rounded-xl transition-all ${showGrid ? 'bg-brand-primary text-white shadow-strong' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
-                title="Mostrar grilla"
-              >
-                <Grid3x3 size={18} />
-              </button>
-              <button
                 onClick={() => onEditorChange?.({
-                  titlePos: { x: 0, y: 24 }, subtitlePos: { x: 0, y: 300 }, logoPos: { x: 180, y: 340 },
+                  titlePos: { x: 0, y: 24 }, subtitlePos: { x: 0, y: 300 }, logoPos: { x: 85, y: 340 },
                   titleSize: 24, subtitleSize: 14, logoSize: 110,
                   titleColor: '#ffffff', subtitleColor: '#ffffff', logoType: 'negative', showLogo: true,
                   titleAlign: 'center', subtitleAlign: 'center', titleShadow: true, subtitleShadow: true,
