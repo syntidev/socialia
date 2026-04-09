@@ -681,6 +681,56 @@ CRITICAL RULES:
 Format: 3:4 portrait, high resolution.`;
   }
 
+  public async detectTextInImage(imageBase64: string): Promise<{ hasTitle: boolean; hasSubtitle: boolean; title?: string; subtitle?: string }> {
+    const prompt = `
+      Analiza esta imagen y determina si ya contiene un título o subtítulo gráfico (texto superpuesto).
+      Responde estrictamente en formato JSON:
+      {
+        "hasTitle": boolean,
+        "hasSubtitle": boolean,
+        "title": "texto detectado o null",
+        "subtitle": "texto detectado o null"
+      }
+    `;
+
+    const cleanBase64 = imageBase64.split(',')[1];
+    const parts = [
+      { text: prompt },
+      {
+        inlineData: {
+          mimeType: "image/jpeg",
+          data: cleanBase64
+        }
+      }
+    ];
+
+    try {
+      const result = await this.ai.models.generateContent({
+        model: TEXT_MODEL,
+        contents: [{ parts }],
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              hasTitle: { type: Type.BOOLEAN },
+              hasSubtitle: { type: Type.BOOLEAN },
+              title: { type: Type.STRING },
+              subtitle: { type: Type.STRING }
+            },
+            required: ["hasTitle", "hasSubtitle"]
+          }
+        }
+      });
+
+      const response = result.text || "{}";
+      return JSON.parse(response);
+    } catch (err) {
+      console.error("Error detectando texto en imagen:", err);
+      return { hasTitle: false, hasSubtitle: false };
+    }
+  }
+
   public async analyzeImageAndGeneratePost(
     imageBase64: string | null,
     topic: string,

@@ -136,8 +136,8 @@ const App: React.FC = () => {
 
   const [visualEditor, setVisualEditor] = useState<VisualEditorState>({
     titlePos: { x: 0, y: 24 },
-    subtitlePos: { x: 0, y: 300 },
-    logoPos: { x: 85, y: 340 },
+    subtitlePos: { x: 0, y: 260 },
+    logoPos: { x: 85, y: 280 },
     titleSize: 24,
     subtitleSize: 14,
     logoSize: 110,
@@ -171,8 +171,8 @@ const App: React.FC = () => {
     const isDark = [PresetType.DARK_NAVY, PresetType.SKY_BLUE, PresetType.VIBRANT_TECH].includes(preset);
     setVisualEditor({
       titlePos: { x: 0, y: 24 },
-      subtitlePos: { x: 0, y: 300 },
-      logoPos: { x: 85, y: 340 },
+      subtitlePos: { x: 0, y: 260 },
+      logoPos: { x: 85, y: 280 },
       titleSize: 24,
       subtitleSize: 14,
       logoSize: 110,
@@ -251,12 +251,36 @@ const App: React.FC = () => {
     console.log('Estado socialAnalysis:', socialAnalysis);
   }, [socialAnalysis]);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setFormData(prev => ({ ...prev, base64Image: reader.result as string }));
+      reader.onloadend = async () => {
+        const base64 = reader.result as string;
+        setFormData(prev => ({ ...prev, base64Image: base64 }));
+        
+        // Automatically jump to Phase 2 (Edit)
+        setActivePhase(AppPhase.PHASE_02);
+        
+        // Reset editor with safe positions
+        resetVisualEditor(formData.preset || PresetType.DARK_NAVY);
+
+        // Analyze image to detect existing text
+        try {
+          const analysis = await geminiService.detectTextInImage(base64);
+          if (analysis.hasTitle || analysis.hasSubtitle) {
+            setVisualEditor(prev => ({
+              ...prev,
+              showTitle: !analysis.hasTitle,
+              showSubtitle: !analysis.hasSubtitle
+            }));
+            
+            if (analysis.title) setReviewedText(analysis.title);
+            if (analysis.subtitle) setReviewedSecondaryText(analysis.subtitle);
+          }
+        } catch (err) {
+          console.error("Error analizando imagen subida:", err);
+        }
       };
       reader.readAsDataURL(file);
     }

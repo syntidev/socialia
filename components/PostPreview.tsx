@@ -64,8 +64,8 @@ const PostPreview = forwardRef<HTMLDivElement, PostPreviewProps>(({
     if (Math.abs(offset.x) < 2 && Math.abs(offset.y) < 2) return;
 
     const currentPos = el === 'title' ? (editorState.titlePos || { x: 0, y: 24 }) : 
-                     el === 'subtitle' ? (editorState.subtitlePos || { x: 0, y: 300 }) : 
-                     (editorState.logoPos || { x: 85, y: 340 });
+                     el === 'subtitle' ? (editorState.subtitlePos || { x: 0, y: 260 }) : 
+                     (editorState.logoPos || { x: 85, y: 280 });
 
     const x = Math.round(currentPos.x + (offset.x || 0));
     const y = Math.round(currentPos.y + (offset.y || 0));
@@ -272,7 +272,7 @@ const PostPreview = forwardRef<HTMLDivElement, PostPreviewProps>(({
                 style={{
                   position: 'absolute',
                   left: editorState?.subtitlePos?.x ?? 0,
-                  top: editorState?.subtitlePos?.y ?? 300,
+                  top: editorState?.subtitlePos?.y ?? 260,
                   x: 0, y: 0,
                   pointerEvents: 'auto', cursor: 'grab',
                   width: '100%',
@@ -307,13 +307,18 @@ const PostPreview = forwardRef<HTMLDivElement, PostPreviewProps>(({
                 style={{
                   position: 'absolute',
                   left: editorState?.logoPos?.x ?? 85,
-                  top: editorState?.logoPos?.y ?? 340,
+                  top: editorState?.logoPos?.y ?? 280,
                   x: 0, y: 0,
                   zIndex: 30, cursor: 'grab',
+                  width: editorState?.logoSize ? `${editorState.logoSize}px` : '110px'
                 }}
                 whileDrag={{ scale: 1.1, zIndex: 50, cursor: 'grabbing' }}
               >
-                {LogoComponent && <LogoComponent className="h-auto" style={{ width: editorState?.logoSize ? `${editorState.logoSize}px` : '110px' }} />}
+                {editorState?.logoType === 'positive' ? (
+                  <LogoPositive className="w-full h-auto" />
+                ) : (
+                  <LogoNegative className="w-full h-auto" />
+                )}
               </motion.div>
             )}
 
@@ -373,7 +378,7 @@ const PostPreview = forwardRef<HTMLDivElement, PostPreviewProps>(({
             <div className="flex items-center gap-2">
               <button
                 onClick={() => onEditorChange?.({
-                  titlePos: { x: 0, y: 24 }, subtitlePos: { x: 0, y: 300 }, logoPos: { x: 85, y: 340 },
+                  titlePos: { x: 0, y: 24 }, subtitlePos: { x: 0, y: 260 }, logoPos: { x: 85, y: 280 },
                   titleSize: 24, subtitleSize: 14, logoSize: 110,
                   titleColor: '#ffffff', subtitleColor: '#ffffff', logoType: 'negative', showLogo: true,
                   titleAlign: 'center', subtitleAlign: 'center', titleShadow: true, subtitleShadow: true,
