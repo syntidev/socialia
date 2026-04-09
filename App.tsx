@@ -452,7 +452,7 @@ const App: React.FC = () => {
 
   const handleAnalyzeSocial = async () => {
     console.log('DEBUG: Iniciando handleAnalyzeSocial');
-    const imageToAnalyze = result?.imageUrl || formData.base64Image || null;
+    const imageToAnalyze = imagenSellada || result?.imageUrl || formData.base64Image || null;
     
     if (!imageToAnalyze) {
       console.warn('DEBUG: No hay imagen para analizar');
@@ -563,14 +563,15 @@ const App: React.FC = () => {
   };
 
   const sendToBuffer = async () => {
-    if (!imagenSellada || !socialAnalysis || !selectedProfileId) return;
+    const finalImage = imagenSellada || result?.imageUrl || formData.base64Image;
+    if (!finalImage || !socialAnalysis || !selectedProfileId) return;
     
     setIsSendingToBuffer(true);
     setError(null);
 
     try {
       // 1. Subir imagen a Cloudinary
-      const cloudinaryUrl = await uploadToCloudinary(imagenSellada);
+      const cloudinaryUrl = await uploadToCloudinary(finalImage);
       
       // 2. Armar caption
       const captionLines = [
@@ -639,10 +640,11 @@ const App: React.FC = () => {
   };
 
   const isPhaseEnabled = (phase: AppPhase): boolean => {
+    const hasImage = result !== null || formData.base64Image !== undefined;
     switch (phase) {
       case AppPhase.PHASE_01: return true;
-      case AppPhase.PHASE_02: return result !== null;
-      case AppPhase.PHASE_03: return imagenSellada !== null;
+      case AppPhase.PHASE_02: return hasImage;
+      case AppPhase.PHASE_03: return hasImage;
       default: return false;
     }
   };
@@ -1670,12 +1672,11 @@ const App: React.FC = () => {
                       />
                     </div>
                      {/* Buffer Integration Button */}
-                {result?.imageUrl && (
+                {(result?.imageUrl || formData.base64Image) && (
                   <div className="mt-10 w-full max-w-[450px] flex gap-4">
                     <button
                       onClick={downloadImage}
-                      disabled={!imagenSellada}
-                      className="flex-1 py-4 bg-slate-800 border-2 border-slate-700 hover:border-brand-primary text-slate-300 rounded-2xl font-black text-[10px] tracking-widest flex items-center justify-center gap-2 transition-all disabled:opacity-30 shadow-soft"
+                      className="flex-1 py-4 bg-slate-800 border-2 border-slate-700 hover:border-brand-primary text-slate-300 rounded-2xl font-black text-[10px] tracking-widest flex items-center justify-center gap-2 transition-all shadow-soft"
                     >
                       <ArrowDownTrayIcon className="w-5 h-5" />
                       DESCARGAR
