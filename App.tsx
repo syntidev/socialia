@@ -522,12 +522,7 @@ const App: React.FC = () => {
         user_email: 'syntidev@gmail.com'
       };
 
-      const makeUrl = import.meta.env.VITE_MAKE_WEBHOOK_URL;
-      if (!makeUrl) {
-        throw new Error('URL de Webhook de Make no configurada. Agrégala en Settings -> Secrets como VITE_MAKE_WEBHOOK_URL');
-      }
-
-      const response = await fetch(makeUrl, {
+      const response = await fetch('/api/make', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
