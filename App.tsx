@@ -332,7 +332,7 @@ const App: React.FC = () => {
       }
 
       // 1. Get Organization
-      const orgResponse = await fetch('/api/buffer', {
+      const orgResponse = await fetch('/api/buffer.ts', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -348,7 +348,7 @@ const App: React.FC = () => {
       if (!orgId) throw new Error('No se encontró organización en Buffer');
 
       // 2. Get Channels - Using direct interpolation to avoid OrganizationId type mismatch
-      const channelsResponse = await fetch('/api/buffer', {
+      const channelsResponse = await fetch('/api/buffer.ts', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -431,6 +431,9 @@ const App: React.FC = () => {
   const resizeImageForGemini = (base64: string): Promise<string> => {
     return new Promise((resolve) => {
       const img = new Image();
+      if (!base64.startsWith('data:')) {
+        img.crossOrigin = 'anonymous';
+      }
       img.src = base64;
       img.onload = () => {
         const canvas = document.createElement('canvas');
@@ -455,23 +458,22 @@ const App: React.FC = () => {
     console.log('DEBUG: Iniciando handleAnalyzeSocial');
     const imageToAnalyze = imagenSellada || result?.imageUrl || formData.base64Image || null;
     
-    if (!imageToAnalyze) {
-      console.warn('DEBUG: No hay imagen para analizar');
-      setError('Sube una imagen o genera un arte primero.');
-      return;
-    }
-
     setIsAnalyzing(true);
     setError(null);
     setActivePhase(AppPhase.PHASE_03);
 
     try {
-      console.log('DEBUG: Redimensionando imagen para Gemini...');
-      const optimizedImage = await resizeImageForGemini(imageToAnalyze);
-      console.log('DEBUG: Imagen optimizada (longitud):', optimizedImage.length);
+      let optimizedImage: string | null = null;
+      if (imageToAnalyze) {
+        console.log('DEBUG: Redimensionando imagen para Gemini...');
+        optimizedImage = await resizeImageForGemini(imageToAnalyze);
+        console.log('DEBUG: Imagen optimizada (longitud):', optimizedImage.length);
+      } else {
+        console.log('DEBUG: No hay imagen, procediendo con análisis de solo texto.');
+      }
       
       console.log('DEBUG: Llamando a geminiService.analyzeImageAndGeneratePost...');
-      const combinedTopic = `${reviewedText} ${reviewedSecondaryText}`.trim() || formData.textInput || formData.customPrompt || '';
+      const combinedTopic = `${reviewedText || formData.textInput} ${reviewedSecondaryText || formData.secondaryText}`.trim() || formData.customPrompt || 'Promoción general';
       
       const analysis = await geminiService.analyzeImageAndGeneratePost(
         optimizedImage,
@@ -617,7 +619,7 @@ const App: React.FC = () => {
         }
       `;
 
-      const response = await fetch('/api/buffer', {
+      const response = await fetch('/api/buffer.ts', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -647,7 +649,7 @@ const App: React.FC = () => {
     switch (phase) {
       case AppPhase.PHASE_01: return true;
       case AppPhase.PHASE_02: return hasImage;
-      case AppPhase.PHASE_03: return hasImage;
+      case AppPhase.PHASE_03: return true; // Always allow Phase 3 for strategy
       default: return false;
     }
   };
@@ -1485,6 +1487,15 @@ const App: React.FC = () => {
                   CONTINUAR A EDICIÓN
                 </button>
               )}
+
+              <button
+                onClick={handleAnalyzeSocial}
+                disabled={isAnalyzing}
+                className="w-full py-4 rounded-2xl font-black text-[11px] tracking-[0.2em] text-slate-400 border-2 border-slate-700 hover:border-brand-primary hover:text-brand-primary transition-all flex items-center justify-center gap-3"
+              >
+                <Icon icon={isAnalyzing ? "tabler:loader-2" : "tabler:rocket"} className={`w-5 h-5 ${isAnalyzing ? 'animate-spin' : ''}`} />
+                {isAnalyzing ? 'ANALIZANDO...' : 'SALTAR A ESTRATEGIA'}
+              </button>
             </div>
 
             {error && (

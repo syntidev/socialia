@@ -56,23 +56,23 @@ const PostPreview = forwardRef<HTMLDivElement, PostPreviewProps>(({
   }, [onEditorChange]);
 
   const handleDragEnd = (el: 'title' | 'subtitle' | 'logo', info: any) => {
-    if (!editorState || !containerRef.current) return;
+    if (!editorState) return;
     
     const offset = info.offset || { x: 0, y: 0 };
     
     // Threshold to prevent accidental moves on click
-    if (Math.abs(offset.x) < 2 && Math.abs(offset.y) < 2) return;
+    if (Math.abs(offset.x) < 1 && Math.abs(offset.y) < 1) return;
 
     const currentPos = el === 'title' ? (editorState.titlePos || { x: 0, y: 24 }) : 
                      el === 'subtitle' ? (editorState.subtitlePos || { x: 0, y: 260 }) : 
                      (editorState.logoPos || { x: 85, y: 280 });
 
-    const x = Math.round(currentPos.x + (offset.x || 0));
-    const y = Math.round(currentPos.y + (offset.y || 0));
+    const newX = Math.round(currentPos.x + offset.x);
+    const newY = Math.round(currentPos.y + offset.y);
     
-    if (el === 'title') update({ titlePos: { x, y } });
-    else if (el === 'subtitle') update({ subtitlePos: { x, y } });
-    else if (el === 'logo') update({ logoPos: { x, y } });
+    if (el === 'title') update({ titlePos: { x: newX, y: newY } });
+    else if (el === 'subtitle') update({ subtitlePos: { x: newX, y: newY } });
+    else if (el === 'logo') update({ logoPos: { x: newX, y: newY } });
   };
 
   // Color picker row
@@ -228,21 +228,24 @@ const PostPreview = forwardRef<HTMLDivElement, PostPreviewProps>(({
             {editorState?.showTitle !== false && mainText && image && (
               <motion.div
                 drag
-                dragConstraints={containerRef} 
-                dragElastic={0}
                 dragMomentum={false}
                 onDragStart={() => setActiveEl('title')}
                 onDragEnd={(_, info) => handleDragEnd('title', info)}
+                animate={{ 
+                  x: editorState?.titlePos?.x ?? 0, 
+                  y: editorState?.titlePos?.y ?? 24 
+                }}
+                transition={{ type: 'spring', damping: 40, stiffness: 400 }}
                 style={{
                   position: 'absolute',
-                  left: editorState?.titlePos?.x ?? 0,
-                  top: editorState?.titlePos?.y ?? 24,
-                  x: 0, y: 0,
-                  pointerEvents: 'auto', cursor: 'grab',
+                  left: 0,
+                  top: 0,
                   width: '100%',
                   textAlign: editorState?.titleAlign || 'center',
                   zIndex: 40,
-                  padding: '0 20px'
+                  padding: '0 20px',
+                  cursor: 'grab',
+                  pointerEvents: 'auto'
                 }}
                 whileDrag={{ scale: 1.02, zIndex: 50, cursor: 'grabbing' }}
               >
@@ -264,21 +267,24 @@ const PostPreview = forwardRef<HTMLDivElement, PostPreviewProps>(({
             {editorState?.showSubtitle !== false && secondaryText && image && (
               <motion.div
                 drag
-                dragConstraints={containerRef} 
-                dragElastic={0}
                 dragMomentum={false}
                 onDragStart={() => setActiveEl('subtitle')}
                 onDragEnd={(_, info) => handleDragEnd('subtitle', info)}
+                animate={{ 
+                  x: editorState?.subtitlePos?.x ?? 0, 
+                  y: editorState?.subtitlePos?.y ?? 260 
+                }}
+                transition={{ type: 'spring', damping: 40, stiffness: 400 }}
                 style={{
                   position: 'absolute',
-                  left: editorState?.subtitlePos?.x ?? 0,
-                  top: editorState?.subtitlePos?.y ?? 260,
-                  x: 0, y: 0,
-                  pointerEvents: 'auto', cursor: 'grab',
+                  left: 0,
+                  top: 0,
                   width: '100%',
                   textAlign: editorState?.subtitleAlign || 'center',
                   zIndex: 35,
-                  padding: '0 20px'
+                  padding: '0 20px',
+                  cursor: 'grab',
+                  pointerEvents: 'auto'
                 }}
                 whileDrag={{ scale: 1.02, zIndex: 50, cursor: 'grabbing' }}
               >
@@ -299,18 +305,22 @@ const PostPreview = forwardRef<HTMLDivElement, PostPreviewProps>(({
             {image && editorState?.showLogo !== false && (
               <motion.div
                 drag 
-                dragConstraints={containerRef} 
-                dragElastic={0}
                 dragMomentum={false}
                 onDragStart={() => setActiveEl('logo')}
                 onDragEnd={(_, info) => handleDragEnd('logo', info)}
+                animate={{ 
+                  x: editorState?.logoPos?.x ?? 85, 
+                  y: editorState?.logoPos?.y ?? 280 
+                }}
+                transition={{ type: 'spring', damping: 40, stiffness: 400 }}
                 style={{
                   position: 'absolute',
-                  left: editorState?.logoPos?.x ?? 85,
-                  top: editorState?.logoPos?.y ?? 280,
-                  x: 0, y: 0,
-                  zIndex: 30, cursor: 'grab',
-                  width: editorState?.logoSize ? `${editorState.logoSize}px` : '110px'
+                  left: 0,
+                  top: 0,
+                  zIndex: 30, 
+                  cursor: 'grab',
+                  width: editorState?.logoSize ? `${editorState.logoSize}px` : '110px',
+                  pointerEvents: 'auto'
                 }}
                 whileDrag={{ scale: 1.1, zIndex: 50, cursor: 'grabbing' }}
               >
