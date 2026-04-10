@@ -1,4 +1,4 @@
-import { GoogleGenAI, Type } from "@google/genai";
+import { Type } from "@google/genai";
 import { 
   GenerationRequest, 
   GenerationResult, 
@@ -30,12 +30,31 @@ const MODEL_NAME = "gemini-2.5-flash-image";
 const TEXT_MODEL = "gemini-3-flash-preview";
 
 export class GeminiService {
-  private ai: GoogleGenAI;
+  constructor() {}
 
-  constructor() {
-    this.ai = new GoogleGenAI({ 
-      apiKey: import.meta.env.VITE_GEMINI_API_KEY || '' 
+  private async callProxy(model: string, action: string, payload: any) {
+    const response = await fetch('/api/gemini', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model,
+        action,
+        ...payload
+      })
     });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      const message = errorData.error?.message || errorData.error || response.statusText;
+      throw new Error(`Gemini Error: ${message}`);
+    }
+    
+    const data = await response.json();
+    // Retornamos todo el objeto de respuesta más un helper .text
+    return {
+      ...data,
+      text: data.candidates?.[0]?.content?.parts?.[0]?.text || '',
+    };
   }
 
   private async withRetry<T>(fn: () => Promise<T>, maxRetries = 3, delay = 2000): Promise<T> {
@@ -518,10 +537,9 @@ NEGATIVE: text, words, letters, logos, watermarks, screen on the back of the pho
         IMPORTANTE: Todo en ESPAÑOL, respetando acentos y ortografía. Sin palabras en inglés.
       `;
 
-      const copyResponse = await this.withRetry(() => this.ai.models.generateContent({
-        model: TEXT_MODEL,
+      const copyResponse = await this.withRetry(() => this.callProxy(TEXT_MODEL, 'generateContent', {
         contents: [{ parts: [{ text: copyPrompt }] }],
-        config: { responseMimeType: "application/json" }
+        generationConfig: { responseMimeType: "application/json" }
       }));
 
       const copyData = JSON.parse(copyResponse.text || "{}");
@@ -547,15 +565,14 @@ NEGATIVE: text, words, letters, logos, watermarks, screen on the back of the pho
           ? `${this.buildHumanScenePrompt(finalData)}\n\nNEGATIVE PROMPT: ${negativePrompt}`
           : `${this.buildSmartPrompt(finalData)}\n\nNEGATIVE PROMPT: ${negativePrompt}`;
 
-      const imageResponse = await this.withRetry(() => this.ai.models.generateContent({
-        model: MODEL_NAME, 
+      const imageResponse = await this.withRetry(() => this.callProxy(MODEL_NAME, 'generateContent', {
         contents: [{
           parts: [
             ...(imagePart ? [imagePart] : []),
             { text: imagePrompt }
           ]
         }],
-        config: {
+        generationConfig: {
           imageConfig: {
             aspectRatio: data.format as any
           }
@@ -590,9 +607,8 @@ NEGATIVE: text, words, letters, logos, watermarks, screen on the back of the pho
     productType: string,
     postObjective: string
   ): Promise<Array<{ hook: string; benefit: string }>> {
-    const response = await this.withRetry(() => this.ai.models.generateContent({
-      model: TEXT_MODEL,
-      config: {
+    const response = await this.withRetry(() => this.callProxy(TEXT_MODEL, 'generateContent', {
+      generationConfig: {
         responseMimeType: 'application/json',
         responseSchema: {
           type: Type.ARRAY,
@@ -645,8 +661,7 @@ Responde SOLO con el array JSON, sin markdown, sin explicaciones.`
         const slide = slides[i];
         const prompt = this.buildCarouselSlidePrompt(slide, productType, i + 1, slides.length);
 
-        const response = await this.withRetry(() => this.ai.models.generateContent({
-          model: MODEL_NAME,
+        const response = await this.withRetry(() => this.callProxy(MODEL_NAME, 'generateContent', {
           contents: [{ role: 'user', parts: [{ text: prompt }] }]
         }));
 
@@ -728,10 +743,9 @@ Format: 3:4 portrait, high resolution.`;
     ];
 
     try {
-      const result = await this.withRetry(() => this.ai.models.generateContent({
-        model: TEXT_MODEL,
+      const result = await this.withRetry(() => this.callProxy(TEXT_MODEL, 'generateContent', {
         contents: [{ parts }],
-        config: {
+        generationConfig: {
           responseMimeType: "application/json",
           responseSchema: {
             type: Type.OBJECT,
@@ -780,11 +794,10 @@ Format: 3:4 portrait, high resolution.`;
     }
 
     try {
-      const response = await this.withRetry(() => this.ai.models.generateContent({
-        model: TEXT_MODEL,
+      const response = await this.withRetry(() => this.callProxy(TEXT_MODEL, 'generateContent', {
         contents: [{ parts }],
-        config: {
-          systemInstruction: SOCIAL_SYSTEM_PROMPT,
+        systemInstruction: SOCIAL_SYSTEM_PROMPT,
+        generationConfig: {
           temperature: 0.7,
           responseMimeType: "application/json",
           responseSchema: {

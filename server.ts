@@ -45,6 +45,35 @@ async function startServer() {
     }
   });
 
+  // Proxy para Gemini (Oculta la API Key del navegador)
+  app.post("/api/gemini", async (req, res) => {
+    try {
+      const apiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
+      if (!apiKey) {
+        return res.status(500).json({ error: "GEMINI_API_KEY no configurada en el servidor" });
+      }
+
+      const { model, action, contents, systemInstruction, generationConfig } = req.body;
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:${action}?key=${apiKey}`;
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents,
+          systemInstruction,
+          generationConfig
+        })
+      });
+
+      const data = await response.json();
+      res.status(response.status).json(data);
+    } catch (error: any) {
+      console.error("Error en proxy Gemini:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Proxy para Buffer (GraphQL)
   app.post("/api/buffer", async (req, res) => {
     try {
