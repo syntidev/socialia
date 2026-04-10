@@ -534,7 +534,7 @@ const App: React.FC = () => {
         user_email: 'syntidev@gmail.com'
       };
 
-      const response = await fetch('/api/make', {
+      const response = await fetch('https://socialia-proxy.syntidev.workers.dev/api/make', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

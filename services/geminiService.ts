@@ -33,7 +33,7 @@ export class GeminiService {
   constructor() {}
 
   private async callProxy(model: string, action: string, payload: any) {
-    const response = await fetch('/api/gemini', {
+    const response = await fetch('https://socialia-proxy.syntidev.workers.dev/api/gemini', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
