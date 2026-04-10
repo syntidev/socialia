@@ -120,6 +120,9 @@ const App: React.FC = () => {
   const [activePhase, setActivePhase] = useState<AppPhase>(AppPhase.PHASE_01);
   const [isAdvancedMode, setIsAdvancedMode] = useState(false);
   const [cooldown, setCooldown] = useState(false);
+  const [bufferProfiles, setBufferProfiles] = useState<any[]>([]);
+  const [selectedProfileId, setSelectedProfileId] = useState<string>('');
+  const [bufferError, setBufferError] = useState<string | null>(null);
 
   const [creationMode, setCreationMode] = useState<CreationMode>(CreationMode.POST);
   const [carouselConfig, setCarouselConfig] = useState<CarouselConfig>({
@@ -551,6 +554,128 @@ const App: React.FC = () => {
       
     } catch (err: any) {
       console.error('Error enviando a Make:', err);
+      setError(err.message);
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  useEffect(() => {
+    if (showPublishModal && bufferProfiles.length === 0) {
+      fetchBufferChannels();
+    }
+  }, [showPublishModal]);
+
+  const fetchBufferChannels = async () => {
+    setBufferError(null);
+    try {
+      // 1. Get Organization
+      const orgResponse = await fetch('/api/buffer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          query: `query { account { organizations { id name } } }`
+        })
+      });
+      const orgData = await orgResponse.json();
+      const orgId = orgData.data?.account?.organizations?.[0]?.id;
+
+      if (!orgId) throw new Error('No se encontró organización en Buffer');
+
+      // 2. Get Channels
+      const channelsResponse = await fetch('/api/buffer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          query: `
+            query GetChannels {
+              channels(input: { organizationId: "${orgId}" }) {
+                id
+                name
+                displayName
+                service
+                avatar
+              }
+            }
+          `
+        })
+      });
+      const channelsData = await channelsResponse.json();
+      const channels = channelsData.data?.channels;
+
+      if (Array.isArray(channels)) {
+        setBufferProfiles(channels);
+        if (channels.length > 0) {
+          setSelectedProfileId(channels[0].id);
+        }
+      } else {
+        throw new Error('Respuesta de canales inesperada');
+      }
+    } catch (err: any) {
+      console.error('Error fetching Buffer channels:', err);
+      setBufferError('Error al conectar con Buffer. Verifica tu token.');
+    }
+  };
+
+  const sendToBuffer = async () => {
+    const finalImage = imagenSellada || result?.imageUrl || formData.base64Image;
+    if (!finalImage || !socialAnalysis || !selectedProfileId) return;
+
+    setIsSending(true);
+    setError(null);
+
+    try {
+      const cloudinaryUrl = await uploadToCloudinary(finalImage);
+      const fullCaption = [
+        socialAnalysis.hook,
+        socialAnalysis.body,
+        socialAnalysis.cta,
+        socialAnalysis.question,
+        socialAnalysis.hashtags.map((h: string) => `#${h}`).join(' ')
+      ].join('\n\n');
+
+      const publishResponse = await fetch('/api/buffer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          query: `
+            mutation CreateDraft($input: CreateDraftInput!) {
+              createDraft(input: $input) {
+                draft { id }
+                userErrors { message }
+              }
+            }
+          `,
+          variables: {
+            input: {
+              channelId: selectedProfileId,
+              content: {
+                text: fullCaption,
+                media: {
+                  images: [{ url: cloudinaryUrl }]
+                }
+              },
+              scheduledAt: bufferSchedule || null
+            }
+          }
+        })
+      });
+
+      const publishData = await publishResponse.json();
+      const userErrors = publishData.data?.createDraft?.userErrors;
+
+      if (userErrors && userErrors.length > 0) {
+        throw new Error(userErrors[0].message);
+      }
+
+      setSendSuccess(true);
+      setTimeout(() => {
+        setSendSuccess(false);
+        setShowPublishModal(false);
+      }, 3000);
+
+    } catch (err: any) {
+      console.error('Error sending to Buffer:', err);
       setError(err.message);
     } finally {
       setIsSending(false);
@@ -1765,33 +1890,80 @@ const App: React.FC = () => {
 
             <div className="p-8 space-y-6">
               <div className="space-y-4">
-                <button
-                  onClick={sendToMake}
-                  disabled={isSending || !socialAnalysis}
-                  className={`w-full py-5 rounded-2xl font-black text-sm tracking-widest text-white shadow-xl transition-all flex flex-col items-center justify-center gap-1 ${
-                    sendSuccess ? 'bg-green-500' : 'bg-indigo-600 hover:bg-indigo-700 hover:scale-[1.02]'
-                  } disabled:opacity-50 disabled:cursor-not-allowed border-b-4 border-indigo-900/30`}
-                >
-                  {isSending ? (
-                    <div className="flex items-center gap-3">
-                      <div className="w-5 h-5 border-3 border-white/30 border-t-white rounded-full animate-spin"></div>
-                      <span>PROCESANDO ENVÍO...</span>
-                    </div>
-                  ) : sendSuccess ? (
-                    <div className="flex items-center gap-3">
-                      <CheckIcon className="w-6 h-6" />
-                      <span>¡ENVIADO CON ÉXITO!</span>
-                    </div>
-                  ) : (
-                    <>
-                      <div className="flex items-center gap-3">
-                        <Icon icon="tabler:bolt" className="w-6 h-6 text-yellow-300" />
+                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Vía 01: Automatización</p>
+                  <button
+                    onClick={sendToMake}
+                    disabled={isSending || !socialAnalysis}
+                    className={`w-full py-4 rounded-xl font-black text-xs tracking-widest text-white shadow-lg transition-all flex flex-col items-center justify-center gap-1 ${
+                      sendSuccess ? 'bg-green-500' : 'bg-indigo-600 hover:bg-indigo-700'
+                    } disabled:opacity-50 disabled:cursor-not-allowed`}
+                  >
+                    {isSending ? (
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                        <span>ENVIANDO...</span>
+                      </div>
+                    ) : sendSuccess ? (
+                      <div className="flex items-center gap-2">
+                        <CheckIcon className="w-5 h-5" />
+                        <span>¡LISTO!</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <Icon icon="tabler:bolt" className="w-5 h-5 text-yellow-300" />
                         <span>ENVIAR A MAKE.COM</span>
                       </div>
-                      <span className="text-[9px] opacity-70 font-bold tracking-normal">Automatización Directa</span>
-                    </>
+                    )}
+                  </button>
+                </div>
+
+                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Vía 02: Buffer Directo</p>
+                  
+                  {bufferError ? (
+                    <div className="p-3 bg-red-50 border border-red-100 text-red-500 rounded-xl text-[9px] font-bold mb-3">
+                      {bufferError}
+                    </div>
+                  ) : bufferProfiles.length > 0 ? (
+                    <div className="space-y-3">
+                      <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                        {bufferProfiles.map(profile => (
+                          <button
+                            key={profile.id}
+                            onClick={() => setSelectedProfileId(profile.id)}
+                            className={`flex-shrink-0 w-10 h-10 rounded-xl border-2 transition-all relative ${
+                              selectedProfileId === profile.id ? 'border-indigo-600 ring-2 ring-indigo-600/20' : 'border-transparent grayscale opacity-50'
+                            }`}
+                          >
+                            <img src={profile.avatar} alt={profile.name} className="w-full h-full rounded-lg object-cover" />
+                            <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-white rounded-full flex items-center justify-center shadow-sm">
+                              <Icon icon={`tabler:brand-${profile.service}`} className="w-2.5 h-2.5 text-indigo-600" />
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                      <button
+                        onClick={sendToBuffer}
+                        disabled={isSending || !selectedProfileId}
+                        className={`w-full py-4 rounded-xl font-black text-xs tracking-widest text-white shadow-lg transition-all flex items-center justify-center gap-2 ${
+                          sendSuccess ? 'bg-green-500' : 'bg-slate-800 hover:bg-slate-900'
+                        } disabled:opacity-50 disabled:cursor-not-allowed`}
+                      >
+                        {isSending ? (
+                          <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                        ) : (
+                          <Icon icon="tabler:brand-buffer" className="w-5 h-5" />
+                        )}
+                        <span>{sendSuccess ? '¡LISTO!' : 'ENVIAR A BUFFER'}</span>
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center py-4">
+                      <div className="w-5 h-5 border-2 border-indigo-600/30 border-t-indigo-600 rounded-full animate-spin"></div>
+                    </div>
                   )}
-                </button>
+                </div>
               </div>
 
               <div className="space-y-2">
