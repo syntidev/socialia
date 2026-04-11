@@ -630,7 +630,7 @@ const App: React.FC = () => {
           query: `
   mutation CreatePost {
     createPost(input: {
-      text: "${fullCaption}",
+      text: ${JSON.stringify(fullCaption)},
       channelId: "${selectedProfileId}",
       schedulingType: automatic,
       mode: ${bufferSchedule ? 'customScheduled' : 'addToQueue'},
