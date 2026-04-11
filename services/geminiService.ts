@@ -138,6 +138,48 @@ export class GeminiService {
     };
   }
 
+  public buildHumanVariation(): string {
+    const GENERO = ['woman', 'man', 'young woman', 'middle-aged man', 'group of two people'];
+    const EDAD = ['in her 20s', 'in his 30s', 'around 40 years old', 'young adult'];
+    const ESCENA = [
+      'modern home office with plants',
+      'urban café with laptop',
+      'outdoor market stall',
+      'bright coworking space',
+      'small retail store interior',
+      'kitchen of a small restaurant',
+      'street vendor setup',
+      'minimalist studio apartment'
+    ];
+    const ILUMINACION = [
+      'golden morning light from window',
+      'bright noon natural light',
+      'soft studio lighting',
+      'warm evening indoor light',
+      'blue hour ambient light',
+      'harsh midday sun outdoors'
+    ];
+    const ELEMENTO_FLOTANTE = [
+      'with floating 3D UI elements around them',
+      'with subtle particle effects in background',
+      'with holographic phone screen visible',
+      'with floating product icons nearby',
+      '', '', ''  // más probabilidad de sin elementos
+    ];
+    const ANGULO = ['frontal portrait', 'three-quarter view', 'over-the-shoulder shot', 'candid side angle'];
+
+    const pickRandom = (arr: string[]) => arr[Math.floor(Math.random() * arr.length)];
+
+    const genero = pickRandom(GENERO);
+    const edad = pickRandom(EDAD);
+    const escena = pickRandom(ESCENA);
+    const iluminacion = pickRandom(ILUMINACION);
+    const elemento = pickRandom(ELEMENTO_FLOTANTE);
+    const angulo = pickRandom(ANGULO);
+
+    return `HUMAN_SUBJECT: A ${genero} ${edad}, ${angulo}, in a ${escena} with ${iluminacion} ${elemento}`.trim();
+  }
+
   public buildSmartPrompt(data: GenerationRequest): string {
     const niche = data.niche || NicheType.SYNTIWEB;
     const preset = data.preset || PresetType.DARK_NAVY;

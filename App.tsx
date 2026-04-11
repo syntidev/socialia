@@ -251,31 +251,41 @@ const App: React.FC = () => {
       reader.onloadend = async () => {
         const base64 = reader.result as string;
         setFormData(prev => ({ ...prev, base64Image: base64 }));
-        
+
         // Automatically jump to Phase 2 (Edit)
         setActivePhase(AppPhase.PHASE_02);
-        
+
         // Reset editor with safe positions
         resetVisualEditor(formData.preset || PresetType.DARK_NAVY);
 
-        // Analyze image to detect existing text
-        try {
-          const analysis = await geminiService.detectTextInImage(base64);
-          if (analysis.hasTitle || analysis.hasSubtitle) {
-            setVisualEditor(prev => ({
-              ...prev,
-              showTitle: !analysis.hasTitle,
-              showSubtitle: !analysis.hasSubtitle
-            }));
-            
-            if (analysis.title) setReviewedText(analysis.title);
-            if (analysis.subtitle) setReviewedSecondaryText(analysis.subtitle);
-          }
-        } catch (err) {
-          console.error("Error analizando imagen subida:", err);
-        }
+        // Reset text fields for user choice in Phase 2
+        setReviewedText('');
+        setReviewedSecondaryText('');
       };
       reader.readAsDataURL(file);
+    }
+  };
+
+  const detectExternalImageText = async () => {
+    if (!formData.base64Image) return;
+
+    setIsAnalyzing(true);
+    try {
+      const analysis = await geminiService.detectTextInImage(formData.base64Image);
+      if (analysis.hasTitle || analysis.hasSubtitle) {
+        setVisualEditor(prev => ({
+          ...prev,
+          showTitle: !analysis.hasTitle,
+          showSubtitle: !analysis.hasSubtitle
+        }));
+
+        if (analysis.title) setReviewedText(analysis.title);
+        if (analysis.subtitle) setReviewedSecondaryText(analysis.subtitle);
+      }
+    } catch (err) {
+      console.error("Error analizando imagen subida:", err);
+    } finally {
+      setIsAnalyzing(false);
     }
   };
 
@@ -500,63 +510,6 @@ const App: React.FC = () => {
     } catch (err: any) {
       console.error('DEBUG: Error en uploadToCloudinary:', err);
       throw err;
-    }
-  };
-
-  const sendToMake = async () => {
-    const finalImage = imagenSellada || result?.imageUrl || formData.base64Image;
-    if (!finalImage || !socialAnalysis) return;
-    
-    setIsSending(true);
-    setError(null);
-
-    try {
-      // 1. Subir imagen a Cloudinary (Make necesita una URL pública)
-      const cloudinaryUrl = await uploadToCloudinary(finalImage);
-      
-      // 2. Armar el paquete de datos (Data Bundle)
-      const payload = {
-        image_url: cloudinaryUrl,
-        hook: socialAnalysis.hook,
-        body: socialAnalysis.body,
-        cta: socialAnalysis.cta,
-        question: socialAnalysis.question,
-        hashtags: socialAnalysis.hashtags,
-        full_caption: [
-          socialAnalysis.hook,
-          socialAnalysis.body,
-          socialAnalysis.cta,
-          socialAnalysis.question,
-          socialAnalysis.hashtags.map((h: string) => `#${h}`).join(' ')
-        ].join('\n\n'),
-        scheduled_at: bufferSchedule || null,
-        timestamp: new Date().toISOString(),
-        user_email: 'syntidev@gmail.com'
-      };
-
-      const response = await fetch('/api/socialia/make', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(payload)
-      });
-
-      if (!response.ok) {
-        throw new Error(`Error en Make.com: ${response.statusText}`);
-      }
-      
-      setSendSuccess(true);
-      setTimeout(() => { 
-        setSendSuccess(false); 
-        setShowPublishModal(false); 
-      }, 3000);
-      
-    } catch (err: any) {
-      console.error('Error enviando a Make:', err);
-      setError(err.message);
-    } finally {
-      setIsSending(false);
     }
   };
 
@@ -1695,6 +1648,38 @@ const App: React.FC = () => {
                   </div>
                 )}
 
+                {/* External Image Text Choice (Only for uploaded images without AI generation) */}
+                {formData.base64Image && !result && (
+                  <div className="mt-10 w-full space-y-4 p-8 bg-slate-800/50 rounded-[2rem] border border-slate-700/50">
+                    <p className="text-[12px] font-black text-white uppercase tracking-widest mb-6">¿Cómo deseas los títulos?</p>
+                    <div className="grid grid-cols-2 gap-4">
+                      <button
+                        onClick={detectExternalImageText}
+                        disabled={isAnalyzing}
+                        className="py-4 px-4 rounded-xl font-black text-[10px] tracking-widest text-white bg-brand-primary hover:bg-brand-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+                      >
+                        {isAnalyzing ? (
+                          <>
+                            <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                            LEYENDO...
+                          </>
+                        ) : (
+                          <>
+                            <Icon icon="tabler:sparkles" className="w-4 h-4" />
+                            LEER CON IA
+                          </>
+                        )}
+                      </button>
+                      <button
+                        className="py-4 px-4 rounded-xl font-black text-[10px] tracking-widest text-white bg-slate-700 hover:bg-slate-600 transition-all flex items-center justify-center gap-2"
+                      >
+                        <Icon icon="tabler:pencil" className="w-4 h-4" />
+                        ESCRIBIR
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 {/* Review Texts Section (Moved below image) */}
                 <div className="mt-10 w-full space-y-6 pt-6 border-t border-slate-800 bg-brand-primary/5 p-8 rounded-[2rem]">
                   <label className="text-[12px] font-black text-white flex items-center gap-3 uppercase tracking-widest">
@@ -1883,35 +1868,7 @@ const App: React.FC = () => {
             <div className="p-8 space-y-6">
               <div className="space-y-4">
                 <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Vía 01: Automatización</p>
-                  <button
-                    onClick={sendToMake}
-                    disabled={isSending || !socialAnalysis}
-                    className={`w-full py-4 rounded-xl font-black text-xs tracking-widest text-white shadow-lg transition-all flex flex-col items-center justify-center gap-1 ${
-                      sendSuccess ? 'bg-green-500' : 'bg-indigo-600 hover:bg-indigo-700'
-                    } disabled:opacity-50 disabled:cursor-not-allowed`}
-                  >
-                    {isSending ? (
-                      <div className="flex items-center gap-2">
-                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                        <span>ENVIANDO...</span>
-                      </div>
-                    ) : sendSuccess ? (
-                      <div className="flex items-center gap-2">
-                        <CheckIcon className="w-5 h-5" />
-                        <span>¡LISTO!</span>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-2">
-                        <Icon icon="tabler:bolt" className="w-5 h-5 text-yellow-300" />
-                        <span>ENVIAR A MAKE.COM</span>
-                      </div>
-                    )}
-                  </button>
-                </div>
-
-                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Vía 02: Buffer Directo</p>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Canal de publicación</p>
                   
                   {bufferError ? (
                     <div className="p-3 bg-red-50 border border-red-100 text-red-500 rounded-xl text-[9px] font-bold mb-3">
