@@ -1790,7 +1790,7 @@ const App: React.FC = () => {
                     </div>
                      {/* Buffer Integration Button */}
                 {(result?.imageUrl || formData.base64Image) && (
-                  <div className="mt-10 w-full max-w-[450px] flex gap-4">
+                  <div className="mt-10 w-full max-w-full flex gap-4">
                     <button
                       onClick={downloadImage}
                       className="flex-1 py-4 bg-slate-800 border-2 border-slate-700 hover:border-brand-primary text-slate-300 rounded-2xl font-black text-[10px] tracking-widest flex items-center justify-center gap-2 transition-all shadow-soft"
@@ -1823,9 +1823,9 @@ const App: React.FC = () => {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -20 }}
-        className="max-w-6xl mx-auto w-full space-y-10"
+        className="max-w-6xl mx-auto w-full space-y-10 overflow-x-hidden"
       >
-        <div className="glass-card p-8 flex items-center justify-between">
+        <div className="glass-card p-6 md:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div className="flex items-center gap-6">
             <button 
               onClick={() => setActivePhase(AppPhase.PHASE_02)}
@@ -1844,11 +1844,11 @@ const App: React.FC = () => {
             </div>
           </div>
           
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 w-full md:w-auto">
             <button
               onClick={() => setShowPublishModal(true)}
               disabled={!socialAnalysis}
-              className="px-8 py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black text-[11px] tracking-[0.2em] flex items-center justify-center gap-3 transition-all shadow-strong disabled:opacity-30"
+              className="w-full md:w-auto px-8 py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black text-[11px] tracking-[0.2em] flex items-center justify-center gap-3 transition-all shadow-strong disabled:opacity-30"
             >
               <Icon icon="tabler:rocket" className="w-6 h-6" />
               PUBLICAR CONTENIDO
@@ -1858,7 +1858,7 @@ const App: React.FC = () => {
 
         {/* Social Strategy Panel */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2 space-y-6">
+          <div className="lg:col-span-2 space-y-6 overflow-hidden">
             {isAnalyzing ? (
               <div className="glass-card p-16 flex flex-col items-center justify-center space-y-8 min-h-[500px]">
                 <div className="relative">
