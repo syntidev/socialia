@@ -796,7 +796,7 @@ Format: 3:4 portrait, high resolution.`;
     try {
       const response = await this.withRetry(() => this.callProxy(TEXT_MODEL, 'generateContent', {
         contents: [{ parts }],
-        systemInstruction: SOCIAL_SYSTEM_PROMPT,
+        systemInstruction: { parts: [{ text: SOCIAL_SYSTEM_PROMPT }] },
         generationConfig: {
           temperature: 0.7,
           responseMimeType: "application/json",
