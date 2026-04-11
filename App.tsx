@@ -1142,7 +1142,7 @@ const App: React.FC = () => {
               </div>
 
               {/* Advanced Fields */}
-              {isAdvancedMode && (
+              {isAdvancedMode && formData.mode !== GenerationMode.HUMAN_SCENE && (
                 <div className="space-y-8 pt-6 border-t-2 border-dashed border-gray-100 animate-in fade-in slide-in-from-top-4 duration-500">
                   {/* Preset Selection */}
                   <div className="space-y-4">
