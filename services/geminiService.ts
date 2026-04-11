@@ -180,6 +180,39 @@ export class GeminiService {
     return `HUMAN_SUBJECT: A ${genero} ${edad}, ${angulo}, in a ${escena} with ${iluminacion} ${elemento}`.trim();
   }
 
+  private buildSaaSVariation(data: GenerationRequest): { scene: string; composition: string; intensity: string } {
+    const productDefaults: Record<string, string> = {
+      'SYNTIweb': 'HERO_CENTERED',
+      'SYNTIstudio': 'FLOATING_UI',
+      'SYNTIfood': 'HERO_CENTERED',
+      'SYNTIcat': 'DASHBOARD_OVERLAY',
+    };
+
+    const SCENES = [
+      'HERO_CENTERED', 'SMARTPHONE_TILTED', 'FLOATING_UI',
+      'DASHBOARD_OVERLAY', 'ABSTRACT_ICONS', 'FLOW_LINES'
+    ];
+    const COMPOSITIONS = [
+      'CENTERED', 'LEFT_TEXT_RIGHT_VISUAL', 'DYNAMIC_DIAGONAL',
+      'MINIMAL', 'TECH_LOADED', 'FRAMED'
+    ];
+    const INTENSITIES = ['SOFT', 'MEDIUM', 'MEDIUM', 'HIGH']; // más probabilidad de MEDIUM
+
+    const pick = (arr: string[]) => arr[Math.floor(Math.random() * arr.length)];
+    const productDefault = productDefaults[data.productType as string] || 'HERO_CENTERED';
+
+    // Si el usuario dejó el default del producto → aleatorio. Si eligió manualmente → respetar.
+    const sceneIsDefault = !data.visualScene || data.visualScene === (VisualScene as any)[productDefault];
+    const compositionIsDefault = !data.composition || data.composition === CompositionType.CENTERED;
+    const intensityIsDefault = !data.intensity || data.intensity === VisualIntensity.MEDIUM;
+
+    return {
+      scene: sceneIsDefault ? (VisualScene as any)[pick(SCENES)] : data.visualScene!,
+      composition: compositionIsDefault ? (CompositionType as any)[pick(COMPOSITIONS)] : data.composition!,
+      intensity: intensityIsDefault ? (VisualIntensity as any)[pick(INTENSITIES)] : data.intensity!,
+    };
+  }
+
   public buildSmartPrompt(data: GenerationRequest): string {
     const niche = data.niche || NicheType.SYNTIWEB;
     const preset = data.preset || PresetType.DARK_NAVY;
@@ -248,6 +281,10 @@ export class GeminiService {
       [PresetType.VIBRANT_TECH]: "Identidad: Future Tech. Enfoque en energía, flujos de datos y dinamismo visual."
     }[preset];
 
+    // Aplicar variación aleatoria de SaaS si el usuario dejó los defaults
+    const saasVariation = this.buildSaaSVariation(data);
+    const resolvedData = { ...data, visualScene: saasVariation.scene as any, composition: saasVariation.composition as any, intensity: saasVariation.intensity as any };
+
     const sceneDesc = {
       [VisualScene.HERO_CENTERED]: "Héroe con smartphone centrado como foco principal.",
       [VisualScene.SMARTPHONE_TILTED]: "Smartphone inclinado con partículas flotantes e iluminación dinámica.",
@@ -256,7 +293,7 @@ export class GeminiService {
       [VisualScene.ABSTRACT_ICONS]: "Fondo tecnológico abstracto con iconos de marca prominentes.",
       [VisualScene.COMPARISON]: "Diseño de comparación lado a lado (Antes vs Después).",
       [VisualScene.FLOW_LINES]: "Líneas de flujo y ondas cinéticas que conectan varios elementos de la interfaz de usuario."
-    }[data.visualScene || VisualScene.HERO_CENTERED];
+    }[resolvedData.visualScene || VisualScene.HERO_CENTERED];
 
     const objectiveDesc = {
       [PostObjective.SELL]: "Objetivo: VENDER. Enfoque comercial directo, alta urgencia.",
@@ -286,13 +323,13 @@ export class GeminiService {
       [CompositionType.MINIMAL]: "Composición: MINIMALISTA (Mucho espacio negativo/aire).",
       [CompositionType.TECH_LOADED]: "Composición: CARGADA TECH (Densa con partículas y flujos de datos).",
       [CompositionType.FRAMED]: "Composición: ENMARCADA (Borde o contenedor tipo tarjeta)."
-    }[data.composition || CompositionType.CENTERED];
+    }[resolvedData.composition || CompositionType.CENTERED];
 
     const intensityDesc = {
       [VisualIntensity.SOFT]: "Intensidad: SUAVE. Limpio, elegante, brillo sutil.",
       [VisualIntensity.MEDIUM]: "Intensidad: MEDIA. Efectos equilibrados, partículas perceptibles.",
       [VisualIntensity.HIGH]: "Intensidad: ALTA. Estilo de anuncios agresivo, brillo fuerte, efectos pesados."
-    }[data.intensity || VisualIntensity.MEDIUM];
+    }[resolvedData.intensity || VisualIntensity.MEDIUM];
 
     const typoToneDesc = {
       [TypoTone.CORPORATE]: "Tono Tipográfico: CORPORATIVO. Sólido, confiable, profesional.",
@@ -468,9 +505,10 @@ export class GeminiService {
       ],
     };
 
+    const humanVariation = this.buildHumanVariation();
     const productKey = data.productType as string;
     const variants = subjectVariants[productKey] || subjectVariants['SYNTIweb'];
-    const randomSubject = variants[Math.floor(Math.random() * variants.length)];
+    const randomSubject = `${variants[Math.floor(Math.random() * variants.length)]}. ${humanVariation}`;
 
     const productScenes = {
       'SYNTIweb': {
