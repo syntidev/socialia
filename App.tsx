@@ -362,6 +362,31 @@ const App: React.FC = () => {
       const currentWidth = element.offsetWidth;
       const scaleFactor = targetWidth / currentWidth;
 
+      // Fix: reemplazar oklch por colores hex compatibles con html2canvas
+      const allElements = document.querySelectorAll('*');
+      const originalStyles: { el: Element; props: Record<string, string> }[] = [];
+      const oklchProps = ['color', 'background-color', 'border-color', 'fill', 'stroke'];
+
+      allElements.forEach((el) => {
+        const computed = window.getComputedStyle(el);
+        const overrides: Record<string, string> = {};
+        oklchProps.forEach((prop) => {
+          const val = computed.getPropertyValue(prop);
+          if (val && val.includes('oklch')) {
+            overrides[prop] = '#000000';
+          }
+        });
+        if (Object.keys(overrides).length > 0) {
+          const htmlEl = el as HTMLElement;
+          const saved: Record<string, string> = {};
+          Object.keys(overrides).forEach((prop) => {
+            saved[prop] = htmlEl.style.getPropertyValue(prop);
+            htmlEl.style.setProperty(prop, overrides[prop]);
+          });
+          originalStyles.push({ el, props: saved });
+        }
+      });
+
       const canvas = await html2canvas(element, {
         useCORS: true,
         allowTaint: true,
@@ -376,7 +401,15 @@ const App: React.FC = () => {
           }
         }
       });
-      
+
+      // Restaurar estilos originales después de html2canvas
+      originalStyles.forEach(({ el, props }) => {
+        const htmlEl = el as HTMLElement;
+        Object.keys(props).forEach((prop) => {
+          htmlEl.style.setProperty(prop, props[prop]);
+        });
+      });
+
       const dataUrl = canvas.toDataURL('image/png');
       setImagenSellada(dataUrl);
 
