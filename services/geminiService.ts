@@ -505,10 +505,11 @@ export class GeminiService {
       ],
     };
 
-    const humanVariation = this.buildHumanVariation();
     const productKey = data.productType as string;
     const variants = subjectVariants[productKey] || subjectVariants['SYNTIweb'];
-    const randomSubject = `${variants[Math.floor(Math.random() * variants.length)]}. ${humanVariation}`;
+    const humanVariation = (data as any).customHumanVariation ||
+      `${variants[Math.floor(Math.random() * variants.length)]}. ${this.buildHumanVariation()}`;
+    const randomSubject = humanVariation;
 
     const productScenes = {
       'SYNTIweb': {
