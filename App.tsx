@@ -125,7 +125,16 @@ const App: React.FC = () => {
   const [cooldown, setCooldown] = useState(false);
   const [bufferProfiles, setBufferProfiles] = useState<any[]>([]);
   const [selectedProfileId, setSelectedProfileId] = useState<string>('');
+  const [modalProductType, setModalProductType] = useState<ProductType>(ProductType.MAIN);
   const [bufferError, setBufferError] = useState<string | null>(null);
+
+  const FACEBOOK_CHANNEL_ID = '69d73e0a031bfa423ce4d1c3';
+  const productUrls: Record<ProductType, string> = {
+    [ProductType.MAIN]:   'syntiweb.com',
+    [ProductType.STUDIO]: 'syntiweb.com/studio',
+    [ProductType.FOOD]:   'syntiweb.com/food',
+    [ProductType.CAT]:    'syntiweb.com/cat',
+  };
   const [humanVariationLocked, setHumanVariationLocked] = useState(false);
   const [humanVariationManual, setHumanVariationManual] = useState({
     genero: 'woman',
@@ -528,8 +537,9 @@ const App: React.FC = () => {
   };
 
   useEffect(() => {
-    if (showPublishModal && bufferProfiles.length === 0) {
-      fetchBufferChannels();
+    if (showPublishModal) {
+      if (bufferProfiles.length === 0) fetchBufferChannels();
+      setModalProductType(formData.productType || ProductType.MAIN);
     }
   }, [showPublishModal]);
 
@@ -582,13 +592,27 @@ const App: React.FC = () => {
 
     try {
       const cloudinaryUrl = await uploadToCloudinary(finalImage);
-      const fullCaption = [
+      const isFacebook = selectedProfileId === FACEBOOK_CHANNEL_ID;
+      const productUrl = productUrls[modalProductType] || 'syntiweb.com';
+
+      const captionParts = [
         socialAnalysis.hook,
         socialAnalysis.body,
         socialAnalysis.cta,
         socialAnalysis.question,
-        socialAnalysis.hashtags.map((h: string) => `#${h}`).join(' ')
-      ].join('\n\n');
+      ];
+
+      if (isFacebook) {
+        captionParts.push(`👉 ${productUrl}`);
+        // Para Facebook: sin hashtags o máximo 2
+        const topHashtags = socialAnalysis.hashtags.slice(0, 2).map((h: string) => `#${h}`).join(' ');
+        if (topHashtags) captionParts.push(topHashtags);
+      } else {
+        // Instagram: hashtags completos, sin URL
+        captionParts.push(socialAnalysis.hashtags.map((h: string) => `#${h}`).join(' '));
+      }
+
+      const fullCaption = captionParts.filter(Boolean).join('\n\n');
 
       const publishResponse = await fetch('/api/socialia/buffer', {
         method: 'POST',
@@ -2017,6 +2041,25 @@ const App: React.FC = () => {
                           </button>
                         ))}
                       </div>
+
+                      {selectedProfileId === FACEBOOK_CHANNEL_ID && (
+                        <div className="p-3 bg-blue-50 border border-blue-100 rounded-xl space-y-2">
+                          <p className="text-[9px] font-black text-blue-500 uppercase tracking-widest">
+                            Producto para URL de Facebook
+                          </p>
+                          <select
+                            value={modalProductType}
+                            onChange={(e) => setModalProductType(e.target.value as ProductType)}
+                            className="w-full px-3 py-2 bg-white border-2 border-blue-200 text-gray-900 text-xs font-bold rounded-xl outline-none focus:border-blue-500"
+                          >
+                            <option value={ProductType.MAIN}>SYNTIweb → syntiweb.com</option>
+                            <option value={ProductType.STUDIO}>SYNTIstudio → syntiweb.com/studio</option>
+                            <option value={ProductType.FOOD}>SYNTIfood → syntiweb.com/food</option>
+                            <option value={ProductType.CAT}>SYNTIcat → syntiweb.com/cat</option>
+                          </select>
+                        </div>
+                      )}
+
                       <button
                         onClick={sendToBuffer}
                         disabled={isSending || !selectedProfileId}
