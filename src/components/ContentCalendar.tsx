@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import * as XLSX from 'xlsx';
 import { CalendarPost, CalendarPostStatus, CalendarPostType, CalendarState } from '../types/calendar';
 
 interface ContentCalendarProps {
@@ -58,31 +59,66 @@ const ContentCalendar: React.FC<ContentCalendarProps> = ({ onLoadPost }) => {
   };
 
   // PASO 4: Importar desde JSON
-  const handleImportJSON = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
+  const handleImportExcel = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
     if (!file) return;
 
-    try {
-      const text = await file.text();
-      const parsed = JSON.parse(text);
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const data = new Uint8Array(evt.target?.result as ArrayBuffer);
+        const workbook = XLSX.read(data, { type: 'uint8array', cellDates: true });
+        const sheetName = workbook.SheetNames[0];
+        const sheet = workbook.Sheets[sheetName];
+        const rows: any[] = XLSX.utils.sheet_to_json(sheet, { defval: '' });
 
-      // Aceptar dos formatos: array directo o { posts: [...] }
-      const importedPosts: CalendarPost[] = Array.isArray(parsed) ? parsed : parsed.posts || [];
+        const imported: CalendarPost[] = rows
+          .filter(row => row.titulo) // ignorar filas vacías
+          .map(row => {
+            // Manejar fecha Excel nativa (Date object) o string
+            let dia = '';
+            if (row.dia instanceof Date) {
+              dia = row.dia.toISOString().split('T')[0];
+            } else if (typeof row.dia === 'number') {
+              // Fecha serial de Excel
+              const date = XLSX.SSF.parse_date_code(row.dia);
+              dia = `${date.y}-${String(date.m).padStart(2,'0')}-${String(date.d).padStart(2,'0')}`;
+            } else {
+              dia = String(row.dia || '').trim();
+            }
 
-      // Merge: posts importados reemplazan los existentes con mismo id
-      const existingById = new Map(state.posts.map(p => [p.id, p]));
-      importedPosts.forEach(p => existingById.set(p.id, p));
-      const mergedPosts = Array.from(existingById.values());
+            return {
+              id: crypto.randomUUID(),
+              dia,
+              tipo: (String(row.tipo || 'POST').toUpperCase()) as CalendarPost['tipo'],
+              producto: String(row.producto || 'MAIN').trim(),
+              objetivo: String(row.objetivo || '').trim(),
+              titulo: String(row.titulo || '').trim(),
+              subtitulo: String(row.subtitulo || '').trim(),
+              caption: String(row.caption || '').trim(),
+              hashtags: String(row.hashtags || '').trim(),
+              estado: (String(row.estado || 'pendiente').toLowerCase()) as CalendarPost['estado'],
+              buffer_id: String(row.buffer_id || '').trim() || undefined,
+              slides: row.slides ? Number(row.slides) : undefined,
+            };
+          });
 
-      await saveCalendar(mergedPosts);
-      alert('Cronograma importado correctamente');
-    } catch (error) {
-      alert(`Error importando archivo: ${error instanceof Error ? error.message : 'desconocido'}`);
-    }
+        setState(prev => ({
+          posts: imported,
+          lastSync: new Date().toISOString()
+        }));
+        saveCalendar(imported);
+        alert('Cronograma importado correctamente');
+      } catch (err) {
+        console.error('Error al leer Excel:', err);
+        alert('Error al leer el archivo Excel. Verifica que tenga el formato correcto.');
+      }
+    };
+    reader.readAsArrayBuffer(file);
 
     // Limpiar input
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+    if (e.target) {
+      e.target.value = '';
     }
   };
 
@@ -177,8 +213,9 @@ const ContentCalendar: React.FC<ContentCalendarProps> = ({ onLoadPost }) => {
           <button
             onClick={() => fileInputRef.current?.click()}
             className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-bold text-xs tracking-wide transition-colors"
+            title="Importa un archivo .xlsx con columnas: dia, tipo, producto, objetivo, titulo, subtitulo, caption, hashtags, estado"
           >
-            IMPORTAR CRONOGRAMA
+            IMPORTAR EXCEL (.xlsx)
           </button>
           <button
             onClick={openNewPost}
@@ -189,8 +226,8 @@ const ContentCalendar: React.FC<ContentCalendarProps> = ({ onLoadPost }) => {
           <input
             ref={fileInputRef}
             type="file"
-            accept=".json"
-            onChange={handleImportJSON}
+            accept=".xlsx,.xls"
+            onChange={handleImportExcel}
             className="hidden"
           />
         </div>
