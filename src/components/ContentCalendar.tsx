@@ -67,7 +67,7 @@ const ContentCalendar: React.FC<ContentCalendarProps> = ({ onLoadPost }) => {
     reader.onload = (evt) => {
       try {
         const data = new Uint8Array(evt.target?.result as ArrayBuffer);
-        const workbook = XLSX.read(data, { type: 'uint8array', cellDates: true });
+        const workbook = XLSX.read(data, { type: 'array', cellDates: true });
         const sheetName = workbook.SheetNames[0];
         const sheet = workbook.Sheets[sheetName];
         const rows: any[] = XLSX.utils.sheet_to_json(sheet, { defval: '' });
