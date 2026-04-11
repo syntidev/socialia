@@ -70,6 +70,8 @@ import {
   PlusCircleIcon,
   PaperAirplaneIcon
 } from '@heroicons/react/24/outline';
+import ContentCalendar from './src/components/ContentCalendar';
+import type { CalendarPost } from './src/types/calendar';
 
 const nicheColors = {
   [ProductType.MAIN]: '#4A80E4',
@@ -118,6 +120,7 @@ const App: React.FC = () => {
   const [imagenSellada, setImagenSellada] = useState<string | null>(null);
   const [isSealing, setIsSealing] = useState(false);
   const [activePhase, setActivePhase] = useState<AppPhase>(AppPhase.PHASE_01);
+  const [activeTab, setActiveTab] = useState<'studio' | 'calendar'>('studio');
   const [isAdvancedMode, setIsAdvancedMode] = useState(false);
   const [cooldown, setCooldown] = useState(false);
   const [bufferProfiles, setBufferProfiles] = useState<any[]>([]);
@@ -797,7 +800,29 @@ const App: React.FC = () => {
       </div>
 
       <main className="flex-1 max-w-7xl mx-auto w-full px-6 py-10">
-        <AnimatePresence mode="wait">
+        <div className="max-w-7xl mx-auto px-4 mb-6">
+          <div className="flex gap-2 p-1 bg-slate-800/50 rounded-2xl w-fit">
+            <button
+              onClick={() => setActiveTab('studio')}
+              className={`px-6 py-2 rounded-xl font-black text-[10px] tracking-widest transition-all ${
+                activeTab === 'studio' ? 'bg-brand-primary text-white shadow-strong' : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              STUDIO
+            </button>
+            <button
+              onClick={() => setActiveTab('calendar')}
+              className={`px-6 py-2 rounded-xl font-black text-[10px] tracking-widest transition-all ${
+                activeTab === 'calendar' ? 'bg-brand-primary text-white shadow-strong' : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              CALENDARIO
+            </button>
+          </div>
+        </div>
+
+        {activeTab === 'studio' && (
+          <AnimatePresence mode="wait">
           {activePhase === AppPhase.PHASE_01 && (
             <motion.div
               key="phase1"
@@ -1921,7 +1946,26 @@ const App: React.FC = () => {
       </motion.div>
     )}
   </AnimatePresence>
-</main>
+        )}
+
+        {activeTab === 'calendar' && (
+          <div className="max-w-7xl mx-auto px-4 w-full">
+            <ContentCalendar
+              onLoadPost={(post) => {
+                setFormData(prev => ({
+                  ...prev,
+                  textInput: post.titulo,
+                  secondaryText: post.subtitulo,
+                }));
+                setReviewedText(post.titulo);
+                setReviewedSecondaryText(post.subtitulo);
+                setActiveTab('studio');
+                setActivePhase(AppPhase.PHASE_01);
+              }}
+            />
+          </div>
+        )}
+      </main>
 
       <footer className="max-w-7xl mx-auto px-4 mt-12 text-center">
         <p className="text-[10px] font-bold text-gray-300 tracking-[0.3em] uppercase">
