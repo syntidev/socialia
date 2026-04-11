@@ -534,7 +534,7 @@ const App: React.FC = () => {
         user_email: 'syntidev@gmail.com'
       };
 
-      const response = await fetch('https://socialia-proxy.syntidev.workers.dev/api/make', {
+      const response = await fetch('/api/socialia/make', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -570,7 +570,7 @@ const App: React.FC = () => {
     setBufferError(null);
     try {
       // 1. Get Organization
-      const orgResponse = await fetch('/api/buffer', {
+      const orgResponse = await fetch('/api/socialia/buffer', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -583,7 +583,7 @@ const App: React.FC = () => {
       if (!orgId) throw new Error('No se encontró organización en Buffer');
 
       // 2. Get Channels
-      const channelsResponse = await fetch('/api/buffer', {
+      const channelsResponse = await fetch('/api/socialia/buffer', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -634,7 +634,7 @@ const App: React.FC = () => {
         socialAnalysis.hashtags.map((h: string) => `#${h}`).join(' ')
       ].join('\n\n');
 
-      const publishResponse = await fetch('/api/buffer', {
+      const publishResponse = await fetch('/api/socialia/buffer', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
