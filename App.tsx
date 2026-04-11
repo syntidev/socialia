@@ -569,27 +569,16 @@ const App: React.FC = () => {
   const fetchBufferChannels = async () => {
     setBufferError(null);
     try {
-      // 1. Get Organization
-      const orgResponse = await fetch('/api/socialia/buffer', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          query: `query { account { organizations { id name } } }`
-        })
-      });
-      const orgData = await orgResponse.json();
-      const orgId = orgData.data?.account?.organizations?.[0]?.id;
+      const organizationId = "69d202e4ad39170ebb42784a";
 
-      if (!orgId) throw new Error('No se encontró organización en Buffer');
-
-      // 2. Get Channels
+      // Get Channels
       const channelsResponse = await fetch('/api/socialia/buffer', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           query: `
             query GetChannels {
-              channels(input: { organizationId: "${orgId}" }) {
+              channels(input: { organizationId: "${organizationId}" }) {
                 id
                 name
                 displayName
@@ -639,33 +628,36 @@ const App: React.FC = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           query: `
-            mutation CreateDraft($input: CreateDraftInput!) {
-              createDraft(input: $input) {
-                draft { id }
-                userErrors { message }
-              }
-            }
-          `,
-          variables: {
-            input: {
-              channelId: selectedProfileId,
-              content: {
-                text: fullCaption,
-                media: {
-                  images: [{ url: cloudinaryUrl }]
-                }
-              },
-              scheduledAt: bufferSchedule || null
-            }
-          }
+  mutation CreatePost {
+    createPost(input: {
+      text: "${fullCaption}",
+      channelId: "${selectedProfileId}",
+      schedulingType: automatic,
+      mode: ${bufferSchedule ? 'customScheduled' : 'addToQueue'},
+      ${bufferSchedule ? `dueAt: "${new Date(bufferSchedule).toISOString()}",` : ''}
+      metadata: {
+        instagram: {
+          type: post,
+          shouldShareToFeed: true
+        }
+      },
+      assets: {
+        images: [{ url: "${cloudinaryUrl}" }]
+      }
+    }) {
+      ... on PostActionSuccess { post { id } }
+      ... on MutationError { message }
+    }
+  }
+          `
         })
       });
 
       const publishData = await publishResponse.json();
-      const userErrors = publishData.data?.createDraft?.userErrors;
+      const error = publishData.data?.createPost?.message;
 
-      if (userErrors && userErrors.length > 0) {
-        throw new Error(userErrors[0].message);
+      if (error) {
+        throw new Error(error);
       }
 
       setSendSuccess(true);
