@@ -1679,7 +1679,7 @@ const App: React.FC = () => {
             )}
 
             {(result || formData.base64Image) && !loading && (
-              <div className="flex-1 flex flex-col items-center justify-center relative">
+              <div className="flex-1 flex flex-col-reverse lg:flex-col items-center justify-center relative">
                 <PostPreview 
                   ref={previewRef}
                   image={result?.imageUrl || formData.base64Image || null}
