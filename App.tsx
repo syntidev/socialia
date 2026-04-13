@@ -641,7 +641,8 @@ const App: React.FC = () => {
         const topHashtags = socialAnalysis.hashtags.slice(0, 2).map((h: string) => `#${h}`).join(' ');
         if (topHashtags) captionParts.push(topHashtags);
       } else {
-        // Instagram: hashtags completos, sin URL
+        // Instagram: CTA fijo + hashtags completos, sin URL
+        captionParts.push('Comenta info y te envío el link 👇');
         captionParts.push(socialAnalysis.hashtags.map((h: string) => `#${h}`).join(' '));
       }
 

@@ -10,7 +10,8 @@
       "Bash(git checkout:*)",
       "Bash(npm install:*)",
       "Bash(node /tmp/gen-template.mjs)",
-      "Bash(node gen-template.mjs)"
+      "Bash(node gen-template.mjs)",
+      "Bash(powershell -Command \"Remove-Item dist -Force -Recurse -ErrorAction SilentlyContinue; npm run build 2>&1\")"
     ]
   }
 }
