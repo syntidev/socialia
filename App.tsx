@@ -159,11 +159,15 @@ const App: React.FC = () => {
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
+        if (Array.isArray(parsed) && parsed.length > 0 && parsed.every(s => s.imageUrl)) {
           setSlides(parsed);
           setCreationMode(CreationMode.CAROUSEL);
+        } else {
+          localStorage.removeItem('socialia_carousel_draft');
         }
-      } catch {}
+      } catch {
+        localStorage.removeItem('socialia_carousel_draft');
+      }
     }
   }, []);
 
@@ -2367,6 +2371,7 @@ mutation CreatePost {
                 setResult(null);
                 setImagenSellada(null);
                 setSlides([]);
+                localStorage.removeItem('socialia_carousel_draft');
                 setActiveSlideIndex(0);
                 setError(null);
 
