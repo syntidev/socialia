@@ -136,6 +136,7 @@ const App: React.FC = () => {
     [ProductType.CAT]:    'syntiweb.com/cat',
   };
   const [humanVariationLocked, setHumanVariationLocked] = useState(false);
+  const [showUpload, setShowUpload] = useState(false);
   const [humanVariationManual, setHumanVariationManual] = useState({
     genero: 'woman',
     escena: 'modern home office with plants',
@@ -1063,6 +1064,107 @@ mutation CreatePost {
                     </div>
                   </div>
 
+                  {/* Section: Visual Style */}
+                  <div className="space-y-8 p-5 bg-slate-800/30 rounded-[2rem] border border-slate-700/50 shadow-inner">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-brand-primary/20 flex items-center justify-center">
+                          <Icon icon="tabler:palette" className="w-5 h-5 text-brand-primary" />
+                        </div>
+                        <h3 className="text-[12px] font-black text-white uppercase tracking-[0.2em]">Estilo Visual</h3>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Modo avanzado</span>
+                        <button
+                          onClick={() => setIsAdvancedMode(!isAdvancedMode)}
+                          className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors focus:outline-none ${
+                            isAdvancedMode ? 'bg-brand-primary' : 'bg-slate-700'
+                          }`}
+                        >
+                          <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${isAdvancedMode ? 'translate-x-5.5' : 'translate-x-1'}`} />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Generation Mode Selector */}
+                    <div className="grid grid-cols-2 gap-4">
+                      {[
+                        { id: GenerationMode.SMART_BUILDER, label: 'Tech SaaS', icon: '🤖' },
+                        { id: GenerationMode.HUMAN_SCENE, label: 'Escena humana', icon: '👤' },
+                      ].map((mode) => (
+                        <button
+                          key={mode.id}
+                          onClick={() => setFormData(p => ({ ...p, mode: mode.id }))}
+                          className={`flex items-center justify-center gap-3 p-5 rounded-2xl border-2 transition-all ${
+                            formData.mode === mode.id
+                              ? 'bg-brand-primary border-brand-primary text-white shadow-strong scale-[1.02]'
+                              : 'bg-slate-800/50 border-slate-700/50 text-slate-500 hover:border-slate-600 hover:text-slate-300'
+                          }`}
+                        >
+                          <span className="text-xl">{mode.icon}</span>
+                          <span className="text-[10px] font-black uppercase tracking-widest">{mode.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {formData.mode === GenerationMode.HUMAN_SCENE && (
+                    <div className="space-y-4 pt-4 border-t border-slate-700">
+                      <div className="flex items-center justify-between">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em]">
+                          Variación de Personaje
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[9px] text-slate-500">{humanVariationLocked ? 'Manual' : 'Aleatorio'}</span>
+                          <button
+                            onClick={() => setHumanVariationLocked(p => !p)}
+                            className={`w-10 h-5 rounded-full transition-colors relative ${humanVariationLocked ? 'bg-indigo-600' : 'bg-slate-600'}`}
+                          >
+                            <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${humanVariationLocked ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                          </button>
+                        </div>
+                      </div>
+                      {humanVariationLocked && (
+                        <div className="space-y-3">
+                          <div>
+                            <label className="text-[9px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">Género</label>
+                            <select value={humanVariationManual.genero} onChange={e => setHumanVariationManual(p => ({ ...p, genero: e.target.value }))} className="w-full px-3 py-2 bg-slate-800 border border-slate-700 text-white text-xs rounded-xl outline-none">
+                              <option value="woman">Mujer</option>
+                              <option value="man">Hombre</option>
+                              <option value="young woman">Mujer joven</option>
+                              <option value="middle-aged man">Hombre maduro</option>
+                              <option value="group of two people">Grupo de dos personas</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="text-[9px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">Escena</label>
+                            <select value={humanVariationManual.escena} onChange={e => setHumanVariationManual(p => ({ ...p, escena: e.target.value }))} className="w-full px-3 py-2 bg-slate-800 border border-slate-700 text-white text-xs rounded-xl outline-none">
+                              <option value="modern home office with plants">Oficina en casa</option>
+                              <option value="urban café with laptop">Café urbano</option>
+                              <option value="outdoor market stall">Mercado al aire libre</option>
+                              <option value="bright coworking space">Coworking</option>
+                              <option value="small retail store interior">Tienda minorista</option>
+                              <option value="kitchen of a small restaurant">Cocina de restaurante</option>
+                              <option value="street vendor setup">Vendedor callejero</option>
+                              <option value="minimalist studio apartment">Apartamento minimalista</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="text-[9px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">Iluminación</label>
+                            <select value={humanVariationManual.iluminacion} onChange={e => setHumanVariationManual(p => ({ ...p, iluminacion: e.target.value }))} className="w-full px-3 py-2 bg-slate-800 border border-slate-700 text-white text-xs rounded-xl outline-none">
+                              <option value="golden morning light from window">Luz de mañana</option>
+                              <option value="bright noon natural light">Luz natural mediodía</option>
+                              <option value="soft studio lighting">Iluminación de estudio</option>
+                              <option value="warm evening indoor light">Luz cálida de tarde</option>
+                              <option value="blue hour ambient light">Hora azul</option>
+                              <option value="harsh midday sun outdoors">Sol exterior fuerte</option>
+                            </select>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   {creationMode === CreationMode.CAROUSEL && (
                     <div className="bg-slate-800/50 border border-slate-700/50 rounded-3xl p-6 mb-8 space-y-6">
                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
@@ -1277,48 +1379,59 @@ mutation CreatePost {
                   )}
 
                   {/* Material Visual Upload */}
-                  <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <label className="text-sm font-bold text-gray-900 flex items-center gap-2">
-                  <PhotoIcon className="w-5 h-5 text-[#4A80E4]" />
-                  MATERIAL VISUAL
-                </label>
-                {formData.base64Image && (
-                  <button 
-                    onClick={() => setFormData(p => ({ ...p, base64Image: undefined }))}
-                    className="text-xs font-bold text-red-500 hover:text-red-600"
-                  >
-                    ELIMINAR
-                  </button>
-                )}
-              </div>
-              <div className="relative group">
-                <input 
-                  type="file" 
-                  accept="image/*" 
-                  onChange={handleFileChange} 
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                />
-                <div className={`border-2 border-dashed rounded-2xl h-48 flex flex-col items-center justify-center transition-all duration-300 ${formData.base64Image ? 'border-[#4A80E4] bg-[#4A80E4]/5' : 'border-gray-200 hover:border-[#4A80E4] hover:bg-gray-50'}`}>
-                  {formData.base64Image ? (
-                    <img src={formData.base64Image} alt="Upload" className="h-full w-full object-contain rounded-2xl p-2" />
-                  ) : (
-                    <div className="text-center p-4">
-                      <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3 text-gray-400 group-hover:text-[#4A80E4] group-hover:scale-110 transition-transform">
-                        <PhotoIcon className="w-6 h-6" />
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <PhotoIcon className="w-4 h-4 text-brand-primary" />
+                        <span className="text-[11px] font-black text-white uppercase tracking-widest">
+                          Foto de referencia
+                        </span>
+                        {formData.base64Image && (
+                          <span className="text-[9px] font-bold text-green-400 uppercase tracking-widest">● CARGADA</span>
+                        )}
                       </div>
-                      <p className="text-xs font-bold text-gray-600 uppercase tracking-tighter">Sube una foto del producto</p>
-                      <p className="text-[10px] text-gray-400 mt-1">O arrastra el archivo aquí</p>
+                      <button
+                        onClick={() => setShowUpload(p => !p)}
+                        className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors ${showUpload || formData.base64Image ? 'bg-brand-primary' : 'bg-slate-700'}`}
+                      >
+                        <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${showUpload || formData.base64Image ? 'translate-x-5.5' : 'translate-x-1'}`} />
+                      </button>
                     </div>
-                  )}
-                </div>
-              </div>
-            </div>
+
+                    {(showUpload || formData.base64Image) && (
+                      <div className="relative group">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleFileChange}
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                        />
+                        <div className={`border-2 border-dashed rounded-2xl h-32 flex flex-col items-center justify-center transition-all duration-300 ${formData.base64Image ? 'border-brand-primary bg-brand-primary/5' : 'border-slate-700 hover:border-brand-primary hover:bg-slate-800/50'}`}>
+                          {formData.base64Image ? (
+                            <div className="relative w-full h-full">
+                              <img src={formData.base64Image} alt="Upload" className="h-full w-full object-contain rounded-2xl p-2" />
+                              <button
+                                onClick={(e) => { e.stopPropagation(); setFormData(p => ({ ...p, base64Image: undefined })); }}
+                                className="absolute top-2 right-2 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center text-white text-[10px] font-black z-20"
+                              >
+                                ×
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="text-center p-3">
+                              <PhotoIcon className="w-5 h-5 text-slate-500 mx-auto mb-1" />
+                              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">Sube o arrastra aquí</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
 
             {/* Simplified Form Phase 01 */}
             <div className="space-y-10">
               {/* Section: Core Identity */}
-              <div className="space-y-6 p-8 bg-slate-800/30 rounded-[2rem] border border-slate-700/50 shadow-inner">
+              <div className="space-y-6 p-5 bg-slate-800/30 rounded-[2rem] border border-slate-700/50 shadow-inner">
                 <div className="flex items-center gap-3 mb-2">
                   <div className="w-8 h-8 rounded-lg bg-brand-primary/20 flex items-center justify-center">
                     <Icon icon="tabler:brand-instagram" className="w-5 h-5 text-brand-primary" />
@@ -1329,7 +1442,7 @@ mutation CreatePost {
                 {/* Product Selector */}
                 <div className="space-y-4">
                   <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.15em] mb-2 block">Producto / Nicho</label>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                  <div className="flex gap-3 overflow-x-auto pb-1">
                     {[
                       { id: ProductType.MAIN, label: 'SYNTIweb', color: nicheColors[ProductType.MAIN], icon: 'tabler:world' },
                       { id: ProductType.STUDIO, label: 'STUDIO', color: nicheColors[ProductType.STUDIO], icon: 'tabler:camera' },
@@ -1339,7 +1452,7 @@ mutation CreatePost {
                       <button
                         key={prod.id}
                         onClick={() => setFormData(p => ({ ...p, productType: prod.id }))}
-                        className={`group relative flex flex-col items-center gap-3 p-4 rounded-2xl border-2 transition-all duration-300 ${
+                        className={`group relative flex flex-shrink-0 flex-row items-center gap-3 px-4 py-3 rounded-2xl border-2 transition-all duration-300 ${
                           formData.productType === prod.id
                             ? 'shadow-strong scale-105 border-transparent'
                             : 'bg-slate-800/50 border-slate-700/50 text-slate-500 hover:border-slate-600 hover:text-slate-300'
@@ -1361,6 +1474,7 @@ mutation CreatePost {
                   </div>
                 </div>
 
+                {creationMode !== CreationMode.CAROUSEL && (<>
                 {/* Objective Selector */}
                 <div className="space-y-4">
                   <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.15em] mb-2 block">Objetivo</label>
@@ -1394,7 +1508,7 @@ mutation CreatePost {
                       {formData.textInput.length}/45
                     </span>
                   </div>
-                  <textarea 
+                  <textarea
                     placeholder="Ej: Tu Catálogo en WhatsApp"
                     maxLength={45}
                     rows={2}
@@ -1412,7 +1526,7 @@ mutation CreatePost {
                       {formData.secondaryText.length}/60
                     </span>
                   </div>
-                  <textarea 
+                  <textarea
                     placeholder="Ej: Sincronizado y Profesional"
                     maxLength={60}
                     rows={2}
@@ -1421,121 +1535,8 @@ mutation CreatePost {
                     onChange={(e) => setFormData(p => ({ ...p, secondaryText: e.target.value }))}
                   />
                 </div>
+                </>)}
               </div>
-
-              {/* Section: Visual Style */}
-              <div className="space-y-8 p-8 bg-slate-800/30 rounded-[2rem] border border-slate-700/50 shadow-inner">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-brand-primary/20 flex items-center justify-center">
-                      <Icon icon="tabler:palette" className="w-5 h-5 text-brand-primary" />
-                    </div>
-                    <h3 className="text-[12px] font-black text-white uppercase tracking-[0.2em]">Estilo Visual</h3>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Modo avanzado</span>
-                    <button
-                      onClick={() => setIsAdvancedMode(!isAdvancedMode)}
-                      className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors focus:outline-none ${
-                        isAdvancedMode ? 'bg-brand-primary' : 'bg-slate-700'
-                      }`}
-                    >
-                      <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${isAdvancedMode ? 'translate-x-5.5' : 'translate-x-1'}`} />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Generation Mode Selector */}
-                <div className="grid grid-cols-2 gap-4">
-                  {[
-                    { id: GenerationMode.SMART_BUILDER, label: 'Tech SaaS', icon: '🤖' },
-                    { id: GenerationMode.HUMAN_SCENE, label: 'Escena humana', icon: '👤' },
-                  ].map((mode) => (
-                    <button
-                      key={mode.id}
-                      onClick={() => setFormData(p => ({ ...p, mode: mode.id }))}
-                      className={`flex items-center justify-center gap-3 p-5 rounded-2xl border-2 transition-all ${
-                        formData.mode === mode.id
-                          ? 'bg-brand-primary border-brand-primary text-white shadow-strong scale-[1.02]'
-                          : 'bg-slate-800/50 border-slate-700/50 text-slate-500 hover:border-slate-600 hover:text-slate-300'
-                      }`}
-                    >
-                      <span className="text-xl">{mode.icon}</span>
-                      <span className="text-[10px] font-black uppercase tracking-widest">{mode.label}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {formData.mode === GenerationMode.HUMAN_SCENE && (
-                <div className="space-y-4 pt-4 border-t border-gray-700">
-                  <div className="flex items-center justify-between">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.15em]">
-                      Variación de Personaje
-                    </label>
-                    <div className="flex items-center gap-2">
-                      <span className="text-[9px] text-gray-500">{humanVariationLocked ? 'Manual' : 'Aleatorio'}</span>
-                      <button
-                        onClick={() => setHumanVariationLocked(p => !p)}
-                        className={`w-10 h-5 rounded-full transition-colors relative ${humanVariationLocked ? 'bg-indigo-600' : 'bg-slate-600'}`}
-                      >
-                        <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${humanVariationLocked ? 'translate-x-5' : 'translate-x-0.5'}`} />
-                      </button>
-                    </div>
-                  </div>
-
-                  {humanVariationLocked && (
-                    <div className="space-y-3">
-                      <div>
-                        <label className="text-[9px] font-bold text-gray-500 uppercase tracking-wider mb-1 block">Género</label>
-                        <select
-                          value={humanVariationManual.genero}
-                          onChange={e => setHumanVariationManual(p => ({ ...p, genero: e.target.value }))}
-                          className="w-full px-3 py-2 bg-slate-800 border border-slate-700 text-white text-xs rounded-xl outline-none"
-                        >
-                          <option value="woman">Mujer</option>
-                          <option value="man">Hombre</option>
-                          <option value="young woman">Mujer joven</option>
-                          <option value="middle-aged man">Hombre maduro</option>
-                          <option value="group of two people">Grupo de dos personas</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="text-[9px] font-bold text-gray-500 uppercase tracking-wider mb-1 block">Escena</label>
-                        <select
-                          value={humanVariationManual.escena}
-                          onChange={e => setHumanVariationManual(p => ({ ...p, escena: e.target.value }))}
-                          className="w-full px-3 py-2 bg-slate-800 border border-slate-700 text-white text-xs rounded-xl outline-none"
-                        >
-                          <option value="modern home office with plants">Oficina en casa</option>
-                          <option value="urban café with laptop">Café urbano</option>
-                          <option value="outdoor market stall">Mercado al aire libre</option>
-                          <option value="bright coworking space">Coworking</option>
-                          <option value="small retail store interior">Tienda minorista</option>
-                          <option value="kitchen of a small restaurant">Cocina de restaurante</option>
-                          <option value="street vendor setup">Vendedor callejero</option>
-                          <option value="minimalist studio apartment">Apartamento minimalista</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="text-[9px] font-bold text-gray-500 uppercase tracking-wider mb-1 block">Iluminación</label>
-                        <select
-                          value={humanVariationManual.iluminacion}
-                          onChange={e => setHumanVariationManual(p => ({ ...p, iluminacion: e.target.value }))}
-                          className="w-full px-3 py-2 bg-slate-800 border border-slate-700 text-white text-xs rounded-xl outline-none"
-                        >
-                          <option value="golden morning light from window">Luz de mañana</option>
-                          <option value="bright noon natural light">Luz natural mediodía</option>
-                          <option value="soft studio lighting">Iluminación de estudio</option>
-                          <option value="warm evening indoor light">Luz cálida de tarde</option>
-                          <option value="blue hour ambient light">Hora azul</option>
-                          <option value="harsh midday sun outdoors">Sol exterior fuerte</option>
-                        </select>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
 
               {/* Advanced Fields */}
               {isAdvancedMode && formData.mode !== GenerationMode.HUMAN_SCENE && (
