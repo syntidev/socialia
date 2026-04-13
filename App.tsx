@@ -2322,13 +2322,46 @@ mutation CreatePost {
           <div className="max-w-7xl mx-auto px-4 w-full">
             <ContentCalendar
               onLoadPost={(post) => {
+                // Mapear producto
+                const productoMap: Record<string, ProductType> = {
+                  'MAIN': ProductType.MAIN,
+                  'STUDIO': ProductType.STUDIO,
+                  'FOOD': ProductType.FOOD,
+                  'CAT': ProductType.CAT,
+                };
+
+                // Mapear tipo a creationMode y format
+                const tipoMap: Record<string, { mode: CreationMode; format: FormatType }> = {
+                  'POST':     { mode: CreationMode.POST,     format: FormatType.FEED },
+                  'STORY':    { mode: CreationMode.STORY,    format: FormatType.REEL },
+                  'REEL':     { mode: CreationMode.STORY,    format: FormatType.REEL },
+                  'CARRUSEL': { mode: CreationMode.CAROUSEL, format: FormatType.FEED },
+                };
+
+                const mapped = tipoMap[post.tipo] ?? { mode: CreationMode.POST, format: FormatType.FEED };
+                const mappedProduct = productoMap[post.producto] ?? ProductType.MAIN;
+
+                setCreationMode(mapped.mode);
                 setFormData(prev => ({
                   ...prev,
                   textInput: post.titulo,
                   secondaryText: post.subtitulo,
+                  format: mapped.format,
+                  productType: mappedProduct,
                 }));
                 setReviewedText(post.titulo);
                 setReviewedSecondaryText(post.subtitulo);
+
+                // Si es CARRUSEL, precargar carouselConfig con el tema y slides
+                if (mapped.mode === CreationMode.CAROUSEL) {
+                  setCarouselConfig(prev => ({
+                    ...prev,
+                    topic: post.titulo,
+                    slideCount: (post.slides as 3 | 5 | 7) ?? 5,
+                    productType: mappedProduct,
+                  }));
+                }
+
                 setActiveTab('studio');
                 setActivePhase(AppPhase.PHASE_01);
               }}
