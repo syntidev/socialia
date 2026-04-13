@@ -153,6 +153,27 @@ const App: React.FC = () => {
   const [isGeneratingCarousel, setIsGeneratingCarousel] = useState(false);
   const [activeSlideIndex, setActiveSlideIndex] = useState<number>(0);
 
+  // Hidratar desde localStorage al montar
+  useEffect(() => {
+    const saved = localStorage.getItem('socialia_carousel_draft');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setSlides(parsed);
+          setCreationMode(CreationMode.CAROUSEL);
+        }
+      } catch {}
+    }
+  }, []);
+
+  // Persistir cuando slides cambia
+  useEffect(() => {
+    if (slides.length > 0) {
+      localStorage.setItem('socialia_carousel_draft', JSON.stringify(slides));
+    }
+  }, [slides]);
+
   const [visualEditor, setVisualEditor] = useState<VisualEditorState>({
     titlePos: { x: 0, y: 24 },
     subtitlePos: { x: 0, y: 260 },
@@ -454,7 +475,9 @@ const App: React.FC = () => {
 
   const handleAnalyzeSocial = async () => {
     console.log('DEBUG: Iniciando handleAnalyzeSocial');
-    const imageToAnalyze = imagenSellada || result?.imageUrl || formData.base64Image || null;
+    const imageToAnalyze = creationMode === CreationMode.CAROUSEL && slides.length > 0
+      ? (slides[0].sealedImage || slides[0].imageUrl || null)
+      : (imagenSellada || result?.imageUrl || formData.base64Image || null);
     
     setIsAnalyzing(true);
     setError(null);
@@ -471,7 +494,9 @@ const App: React.FC = () => {
       }
       
       console.log('DEBUG: Llamando a geminiService.analyzeImageAndGeneratePost...');
-      const combinedTopic = `${reviewedText || formData.textInput} ${reviewedSecondaryText || formData.secondaryText}`.trim() || formData.customPrompt || 'Promoción general';
+      const combinedTopic = creationMode === CreationMode.CAROUSEL && carouselConfig.topic
+        ? `Carrusel de ${slides.length} slides sobre: "${carouselConfig.topic}". Portada: "${slides[0]?.hook || ''}"`
+        : `${reviewedText || formData.textInput} ${reviewedSecondaryText || formData.secondaryText}`.trim() || formData.customPrompt || 'Promoción general';
       
       const analysis = await geminiService.analyzeImageAndGeneratePost(
         optimizedImage,
@@ -617,72 +642,157 @@ const App: React.FC = () => {
   };
 
   const sendToBuffer = async () => {
-    const finalImage = imagenSellada || result?.imageUrl || formData.base64Image;
-    if (!finalImage || !socialAnalysis || !selectedProfileId) return;
+    if (!socialAnalysis || !selectedProfileId) return;
+
+    // ── Validación de imágenes según modo ──
+    if (creationMode === CreationMode.CAROUSEL) {
+      const unsealed = slides.filter(s => !s.sealedImage);
+      if (unsealed.length > 0) {
+        setError(`Faltan ${unsealed.length} slides por sellar antes de publicar.`);
+        return;
+      }
+    } else {
+      const finalImage = imagenSellada || result?.imageUrl || formData.base64Image;
+      if (!finalImage) return;
+    }
 
     setIsSending(true);
     setError(null);
 
     try {
-      const cloudinaryUrl = await uploadToCloudinary(finalImage);
       const isFacebook = selectedProfileId === FACEBOOK_CHANNEL_ID;
       const productUrl = productUrls[modalProductType] || 'syntiweb.com';
 
+      // ── Construir caption (igual para los 3 modos) ──
       const captionParts = [
         socialAnalysis.hook,
         socialAnalysis.body,
         socialAnalysis.cta,
         socialAnalysis.question,
       ];
-
       if (isFacebook) {
         captionParts.push(`👉 ${productUrl}`);
-        // Para Facebook: sin hashtags o máximo 2
         const topHashtags = socialAnalysis.hashtags.slice(0, 2).map((h: string) => `#${h}`).join(' ');
         if (topHashtags) captionParts.push(topHashtags);
       } else {
-        // Instagram: CTA fijo + hashtags completos, sin URL
-        captionParts.push('Comenta info y te envío el link 👇');
         captionParts.push(socialAnalysis.hashtags.map((h: string) => `#${h}`).join(' '));
       }
-
       const fullCaption = captionParts.filter(Boolean).join('\n\n');
 
-      const publishResponse = await fetch('/api/socialia/buffer', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          query: `
-  mutation CreatePost {
-    createPost(input: {
-      text: ${JSON.stringify(fullCaption)},
-      channelId: "${selectedProfileId}",
-      schedulingType: automatic,
-      mode: ${bufferSchedule ? 'customScheduled' : 'addToQueue'},
-      ${bufferSchedule ? `dueAt: "${new Date(bufferSchedule).toISOString()}",` : ''}
-      metadata: {
-        instagram: {
-          type: post,
-          shouldShareToFeed: true
-        }
-      },
-      assets: {
-        images: [{ url: "${cloudinaryUrl}" }]
+      // ── CAROUSEL: subir todas las imágenes en paralelo ──
+      if (creationMode === CreationMode.CAROUSEL) {
+        const uploadPromises = slides.map(s => uploadToCloudinary(s.sealedImage!));
+        const cloudinaryUrls = await Promise.all(uploadPromises);
+        const imagesArray = cloudinaryUrls.map(url => `{ url: "${url}" }`).join(', ');
+
+        const publishResponse = await fetch('/api/socialia/buffer', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            query: `
+mutation CreatePost {
+  createPost(input: {
+    text: ${JSON.stringify(fullCaption)},
+    channelId: "${selectedProfileId}",
+    schedulingType: automatic,
+    mode: ${bufferSchedule ? 'customScheduled' : 'addToQueue'},
+    ${bufferSchedule ? `dueAt: "${new Date(bufferSchedule).toISOString()}",` : ''}
+    metadata: {
+      instagram: {
+        type: carousel,
+        shouldShareToFeed: true
       }
-    }) {
-      ... on PostActionSuccess { post { id } }
-      ... on MutationError { message }
+    },
+    assets: {
+      images: [${imagesArray}]
     }
+  }) {
+    ... on PostActionSuccess { post { id } }
+    ... on MutationError { message }
   }
-          `
-        })
-      });
+}
+            `
+          })
+        });
+        const publishData = await publishResponse.json();
+        const publishError = publishData.data?.createPost?.message;
+        if (publishError) throw new Error(publishError);
 
-      const publishData = await publishResponse.json();
-      const error = publishData.data?.createPost?.message;
+      // ── STORY ──
+      } else if (creationMode === CreationMode.STORY) {
+        const finalImage = imagenSellada || result?.imageUrl || formData.base64Image!;
+        const cloudinaryUrl = await uploadToCloudinary(finalImage);
 
-      if (error) {
-        throw new Error(error);
+        const publishResponse = await fetch('/api/socialia/buffer', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            query: `
+mutation CreatePost {
+  createPost(input: {
+    text: ${JSON.stringify(fullCaption)},
+    channelId: "${selectedProfileId}",
+    schedulingType: automatic,
+    mode: ${bufferSchedule ? 'customScheduled' : 'addToQueue'},
+    ${bufferSchedule ? `dueAt: "${new Date(bufferSchedule).toISOString()}",` : ''}
+    metadata: {
+      instagram: {
+        type: story,
+        shouldShareToFeed: false
+      }
+    },
+    assets: {
+      images: [{ url: "${cloudinaryUrl}" }]
+    }
+  }) {
+    ... on PostActionSuccess { post { id } }
+    ... on MutationError { message }
+  }
+}
+            `
+          })
+        });
+        const publishData = await publishResponse.json();
+        const publishError = publishData.data?.createPost?.message;
+        if (publishError) throw new Error(publishError);
+
+      // ── POST (flujo original intacto) ──
+      } else {
+        const finalImage = imagenSellada || result?.imageUrl || formData.base64Image!;
+        const cloudinaryUrl = await uploadToCloudinary(finalImage);
+
+        const publishResponse = await fetch('/api/socialia/buffer', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            query: `
+mutation CreatePost {
+  createPost(input: {
+    text: ${JSON.stringify(fullCaption)},
+    channelId: "${selectedProfileId}",
+    schedulingType: automatic,
+    mode: ${bufferSchedule ? 'customScheduled' : 'addToQueue'},
+    ${bufferSchedule ? `dueAt: "${new Date(bufferSchedule).toISOString()}",` : ''}
+    metadata: {
+      instagram: {
+        type: post,
+        shouldShareToFeed: true
+      }
+    },
+    assets: {
+      images: [{ url: "${cloudinaryUrl}" }]
+    }
+  }) {
+    ... on PostActionSuccess { post { id } }
+    ... on MutationError { message }
+  }
+}
+            `
+          })
+        });
+        const publishData = await publishResponse.json();
+        const publishError = publishData.data?.createPost?.message;
+        if (publishError) throw new Error(publishError);
       }
 
       setSendSuccess(true);
@@ -778,6 +888,29 @@ const App: React.FC = () => {
         ));
       }
     );
+  };
+
+  const getDefaultEditorForSlide = (index: number, total: number): VisualEditorState => {
+    const isPortada = index === 0;
+    const isCTA = index === total - 1 && total > 1;
+    return {
+      titlePos: { x: 0, y: 24 },
+      subtitlePos: { x: 0, y: 260 },
+      logoPos: { x: 85, y: 280 },
+      titleSize: isPortada ? 28 : 20,
+      subtitleSize: isPortada ? 14 : 13,
+      logoSize: 110,
+      titleColor: '#ffffff',
+      subtitleColor: '#ffffff',
+      logoType: 'negative',
+      showLogo: isPortada || isCTA,
+      titleAlign: 'center',
+      subtitleAlign: 'center',
+      titleShadow: true,
+      subtitleShadow: true,
+      showTitle: true,
+      showSubtitle: true,
+    };
   };
 
   return (
@@ -980,6 +1113,18 @@ const App: React.FC = () => {
                       >
                         {isGeneratingCarousel ? '⏳ GENERANDO...' : '🎠 GENERAR CARRUSEL'}
                       </button>
+
+                      {slides.length > 0 && (
+                        <button
+                          onClick={() => {
+                            setSlides([]);
+                            localStorage.removeItem('socialia_carousel_draft');
+                          }}
+                          className="w-full py-3 rounded-2xl font-black text-[10px] tracking-widest text-slate-500 border border-slate-700 hover:border-red-500 hover:text-red-400 transition-all"
+                        >
+                          🗑 LIMPIAR BORRADOR GUARDADO
+                        </button>
+                      )}
                     </div>
                   )}
 
@@ -1730,25 +1875,32 @@ const App: React.FC = () => {
                     DESCARGAR
                   </button>
                 )}
-                <button
-                  onClick={handleAnalyzeSocial}
-                  disabled={isAnalyzing}
-                  className={`px-8 py-3 rounded-2xl font-black text-[11px] tracking-[0.2em] text-white shadow-strong transition-all flex items-center justify-center gap-3 ${
-                    isAnalyzing ? 'bg-slate-700 cursor-not-allowed opacity-50' : 'bg-gradient-to-r from-brand-primary to-brand-secondary hover:scale-[1.02] active:scale-95'
-                  }`}
-                >
-                  {isAnalyzing ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                      ANALIZANDO...
-                    </>
-                  ) : (
-                    <>
-                      <Icon icon="tabler:sparkles" className="w-5 h-5" />
-                      GENERAR ESTRATEGIA
-                    </>
-                  )}
-                </button>
+                {(() => {
+                  const carouselReady = creationMode !== CreationMode.CAROUSEL
+                    || slides.every(s => s.sealedImage);
+                  return (
+                    <button
+                      onClick={handleAnalyzeSocial}
+                      disabled={isAnalyzing || !carouselReady}
+                      title={!carouselReady ? `Sella todos los slides primero (${slides.filter(s => s.sealedImage).length}/${slides.length})` : ''}
+                      className={`px-8 py-3 rounded-2xl font-black text-[11px] tracking-[0.2em] text-white shadow-strong transition-all flex items-center justify-center gap-3 ${
+                        isAnalyzing || !carouselReady ? 'bg-slate-700 cursor-not-allowed opacity-50' : 'bg-gradient-to-r from-brand-primary to-brand-secondary hover:scale-[1.02] active:scale-95'
+                      }`}
+                    >
+                      {isAnalyzing ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                          ANALIZANDO...
+                        </>
+                      ) : (
+                        <>
+                          <Icon icon="tabler:sparkles" className="w-5 h-5" />
+                          GENERAR ESTRATEGIA
+                        </>
+                      )}
+                    </button>
+                  );
+                })()}
               </div>
             </div>
 
@@ -1761,16 +1913,76 @@ const App: React.FC = () => {
               </div>
             )}
 
-            {(result || formData.base64Image) && !loading && (
+            {creationMode === CreationMode.CAROUSEL && slides.length > 0 && (
+              <div className="mb-8 space-y-3">
+                <div className="flex items-center justify-between px-1">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
+                    Slides del carrusel
+                  </p>
+                  <p className="text-[10px] font-bold text-slate-500">
+                    {slides.filter(s => s.sealedImage).length}/{slides.length} sellados
+                  </p>
+                </div>
+                <div className="flex gap-3 overflow-x-auto pb-2">
+                  {slides.map((slide, index) => (
+                    <button
+                      key={slide.id}
+                      onClick={() => {
+                        setActiveSlideIndex(index);
+                        const editorToLoad = slide.editorState ?? getDefaultEditorForSlide(index, slides.length);
+                        setVisualEditor(editorToLoad);
+                        setResult(slide.imageUrl ? { imageUrl: slide.imageUrl, caption: slide.hook } : null);
+                        setReviewedText(slide.hook);
+                        setReviewedSecondaryText(slide.benefit);
+                        setImagenSellada(slide.sealedImage);
+                      }}
+                      className={`flex-shrink-0 relative w-20 rounded-xl overflow-hidden border-2 transition-all ${
+                        activeSlideIndex === index
+                          ? 'border-brand-primary shadow-strong scale-105'
+                          : 'border-slate-700 opacity-60 hover:opacity-100'
+                      }`}
+                    >
+                      <div className="aspect-[3/4] bg-slate-800">
+                        {slide.imageUrl && (
+                          <img src={slide.imageUrl} alt={`Slide ${index + 1}`} className="w-full h-full object-cover" />
+                        )}
+                      </div>
+                      <div className={`absolute top-1 right-1 w-4 h-4 rounded-full flex items-center justify-center text-[8px] ${
+                        slide.sealedImage ? 'bg-green-500' : 'bg-orange-400'
+                      }`}>
+                        {slide.sealedImage ? '✓' : index + 1}
+                      </div>
+                      <div className="absolute bottom-0 w-full bg-black/70 px-1 py-1">
+                        <p className="text-[7px] font-bold text-white truncate">{index === 0 ? 'PORTADA' : index === slides.length - 1 ? 'CTA' : `SLIDE ${index + 1}`}</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {(result || formData.base64Image || (creationMode === CreationMode.CAROUSEL && slides.length > 0 && slides[activeSlideIndex]?.imageUrl)) && !loading && (
               <div className="flex-1 flex flex-col-reverse lg:flex-col items-center justify-center relative">
-                <PostPreview 
+                <PostPreview
                   ref={previewRef}
-                  image={result?.imageUrl || formData.base64Image || null}
+                  image={
+                    creationMode === CreationMode.CAROUSEL && slides.length > 0
+                      ? (slides[activeSlideIndex]?.imageUrl || null)
+                      : (result?.imageUrl || formData.base64Image || null)
+                  }
                   caption={socialAnalysis?.hook || reviewedText || formData.textInput || 'Vista previa del post'}
                   format={formData.format === FormatType.FEED ? PostFormat.FEED_PORTRAIT : PostFormat.REEL_STORY}
                   visualText={socialAnalysis?.visualAdvice.textOverlaySuggestion}
-                  mainText={reviewedText}
-                  secondaryText={reviewedSecondaryText}
+                  mainText={
+                    creationMode === CreationMode.CAROUSEL && slides.length > 0
+                      ? slides[activeSlideIndex]?.hook
+                      : reviewedText
+                  }
+                  secondaryText={
+                    creationMode === CreationMode.CAROUSEL && slides.length > 0
+                      ? slides[activeSlideIndex]?.benefit
+                      : reviewedSecondaryText
+                  }
                   preset={formData.preset}
                   composition={formData.composition}
                   editorState={visualEditor}
@@ -1791,26 +2003,43 @@ const App: React.FC = () => {
                 />
 
                 {/* Seal Image Button */}
-                {(result?.imageUrl || formData.base64Image) && (
-                  <div className="mt-10 w-full max-w-[400px] p-8 bg-slate-800/30 rounded-[2rem] border border-slate-700/50 shadow-inner">
-                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-4 text-center">Paso Final: Sellar para continuar</p>
-                    <button
-                      onClick={sellarImagen}
-                      disabled={isSealing}
-                      className={`w-full py-4 rounded-2xl font-black text-[11px] tracking-[0.2em] flex items-center justify-center gap-3 transition-all shadow-strong ${
-                        imagenSellada ? 'bg-green-600 hover:bg-green-700' : 'bg-brand-primary hover:bg-brand-primary/90'
-                      } text-white`}
-                    >
-                      <Icon icon={imagenSellada ? "tabler:check" : "tabler:stamp"} className="w-6 h-6" />
-                      {isSealing ? 'SELLANDO...' : imagenSellada ? 'DISEÑO SELLADO' : 'SELLAR DISEÑO FINAL'}
-                    </button>
-                    {imagenSellada && (
-                      <p className="text-[9px] font-bold text-green-500 uppercase tracking-widest mt-4 text-center animate-pulse">
-                        ¡Listo! Ya puedes ir a la Fase 03
-                      </p>
-                    )}
-                  </div>
-                )}
+                {(result?.imageUrl || formData.base64Image || (creationMode === CreationMode.CAROUSEL && slides[activeSlideIndex]?.imageUrl)) && (() => {
+                  const currentSlideSeal = creationMode === CreationMode.CAROUSEL && slides.length > 0
+                    ? slides[activeSlideIndex]?.sealedImage
+                    : imagenSellada;
+                  return (
+                    <div className="mt-10 w-full max-w-[400px] p-8 bg-slate-800/30 rounded-[2rem] border border-slate-700/50 shadow-inner">
+                      <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-4 text-center">Paso Final: Sellar para continuar</p>
+                      <button
+                        onClick={sellarImagen}
+                        disabled={isSealing}
+                        className={`w-full py-4 rounded-2xl font-black text-[11px] tracking-[0.2em] flex items-center justify-center gap-3 transition-all shadow-strong ${
+                          currentSlideSeal ? 'bg-green-600 hover:bg-green-700' : 'bg-brand-primary hover:bg-brand-primary/90'
+                        } text-white`}
+                      >
+                        <Icon icon={currentSlideSeal ? "tabler:check" : "tabler:stamp"} className="w-6 h-6" />
+                        {isSealing
+                          ? 'SELLANDO...'
+                          : currentSlideSeal
+                            ? creationMode === CreationMode.CAROUSEL
+                              ? `SLIDE ${activeSlideIndex + 1} SELLADO ✓`
+                              : 'DISEÑO SELLADO'
+                            : creationMode === CreationMode.CAROUSEL
+                              ? `SELLAR SLIDE ${activeSlideIndex + 1}`
+                              : 'SELLAR DISEÑO FINAL'}
+                      </button>
+                      {currentSlideSeal && (
+                        <p className="text-[9px] font-bold text-green-500 uppercase tracking-widest mt-4 text-center animate-pulse">
+                          {creationMode === CreationMode.CAROUSEL
+                            ? slides.every(s => s.sealedImage)
+                              ? '¡Todos los slides sellados! Ve a Fase 03'
+                              : 'Sellado. Navega al siguiente slide.'
+                            : '¡Listo! Ya puedes ir a la Fase 03'}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })()}
 
                 {/* External Image Text Choice (Only for uploaded images without AI generation) */}
                 {formData.base64Image && !result && (
@@ -2155,6 +2384,29 @@ const App: React.FC = () => {
                   />
                 </div>
               </div>
+
+              {creationMode === CreationMode.CAROUSEL && slides.length > 0 && (
+                <div className="p-4 bg-indigo-50 border border-indigo-100 rounded-2xl space-y-2">
+                  <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">
+                    Carrusel · {slides.length} imágenes
+                  </p>
+                  <div className="flex gap-1.5 overflow-x-auto">
+                    {slides.map((s, i) => (
+                      <div key={i} className={`flex-shrink-0 w-10 h-14 rounded-lg overflow-hidden border-2 ${s.sealedImage ? 'border-green-400' : 'border-red-400'}`}>
+                        {s.sealedImage
+                          ? <img src={s.sealedImage} className="w-full h-full object-cover" />
+                          : <div className="w-full h-full bg-red-50 flex items-center justify-center text-[8px] font-bold text-red-400">!</div>
+                        }
+                      </div>
+                    ))}
+                  </div>
+                  {slides.some(s => !s.sealedImage) && (
+                    <p className="text-[9px] font-bold text-red-500">
+                      ⚠ {slides.filter(s => !s.sealedImage).length} slide(s) sin sellar
+                    </p>
+                  )}
+                </div>
+              )}
 
               <div className="space-y-2">
                 <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.15em] mb-2 block">Vista Previa del Caption</label>
