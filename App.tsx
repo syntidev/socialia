@@ -2355,7 +2355,7 @@ mutation CreatePost {
                   productType: mappedProduct,
                 }));
                 setReviewedText(post.titulo);
-                setReviewedSecondaryText(post.subtitulo);
+                setReviewedSecondaryText(mapped.mode === CreationMode.CAROUSEL ? '' : (post.subtitulo || ''));
 
                 // Si es CARRUSEL, precargar carouselConfig con el tema y slides
                 if (mapped.mode === CreationMode.CAROUSEL) {
