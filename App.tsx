@@ -928,8 +928,8 @@ mutation CreatePost {
               <SparklesIcon className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h1 className="text-lg font-black tracking-tight text-white leading-none">SYNTI<span className="text-brand-primary">studio</span></h1>
-              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mt-1">AI Creative Engine</p>
+              <h1 className="text-lg font-black tracking-tight text-white leading-none">Socia<span className="text-brand-primary">liA</span></h1>
+              <a href="https://syntiweb.com/socialia" target="_blank" className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mt-1 hover:text-brand-primary transition-colors">syntiweb.com/socialia</a>
             </div>
           </div>
           
