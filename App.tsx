@@ -1101,6 +1101,89 @@ mutation CreatePost {
                         </div>
                       </div>
 
+                      {/* Modo visual */}
+                      <div>
+                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-3 block">
+                          Estilo visual
+                        </label>
+                        <div className="grid grid-cols-2 gap-4">
+                          {[
+                            { id: GenerationMode.SMART_BUILDER, label: 'Tech SaaS', icon: '🤖' },
+                            { id: GenerationMode.HUMAN_SCENE, label: 'Escena humana', icon: '👤' },
+                          ].map((mode) => (
+                            <button
+                              key={mode.id}
+                              onClick={() => setFormData(p => ({ ...p, mode: mode.id }))}
+                              className={`flex items-center justify-center gap-3 p-5 rounded-2xl border-2 transition-all ${
+                                formData.mode === mode.id
+                                  ? 'bg-brand-primary border-brand-primary text-white shadow-strong scale-[1.02]'
+                                  : 'bg-slate-800/50 border-slate-700/50 text-slate-500 hover:border-slate-600 hover:text-slate-300'
+                              }`}
+                            >
+                              <span className="text-xl">{mode.icon}</span>
+                              <span className="text-[10px] font-black uppercase tracking-widest">{mode.label}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {formData.mode === GenerationMode.HUMAN_SCENE && (
+                        <div className="space-y-4 pt-4 border-t border-slate-700">
+                          <div className="flex items-center justify-between">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em]">
+                              Variación de Personaje
+                            </label>
+                            <div className="flex items-center gap-2">
+                              <span className="text-[9px] text-slate-500">{humanVariationLocked ? 'Manual' : 'Aleatorio'}</span>
+                              <button
+                                onClick={() => setHumanVariationLocked(p => !p)}
+                                className={`w-10 h-5 rounded-full transition-colors relative ${humanVariationLocked ? 'bg-indigo-600' : 'bg-slate-600'}`}
+                              >
+                                <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${humanVariationLocked ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                              </button>
+                            </div>
+                          </div>
+                          {humanVariationLocked && (
+                            <div className="space-y-3">
+                              <div>
+                                <label className="text-[9px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">Género</label>
+                                <select value={humanVariationManual.genero} onChange={e => setHumanVariationManual(p => ({ ...p, genero: e.target.value }))} className="w-full px-3 py-2 bg-slate-800 border border-slate-700 text-white text-xs rounded-xl outline-none">
+                                  <option value="woman">Mujer</option>
+                                  <option value="man">Hombre</option>
+                                  <option value="young woman">Mujer joven</option>
+                                  <option value="middle-aged man">Hombre maduro</option>
+                                  <option value="group of two people">Grupo de dos personas</option>
+                                </select>
+                              </div>
+                              <div>
+                                <label className="text-[9px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">Escena</label>
+                                <select value={humanVariationManual.escena} onChange={e => setHumanVariationManual(p => ({ ...p, escena: e.target.value }))} className="w-full px-3 py-2 bg-slate-800 border border-slate-700 text-white text-xs rounded-xl outline-none">
+                                  <option value="modern home office with plants">Oficina en casa</option>
+                                  <option value="urban café with laptop">Café urbano</option>
+                                  <option value="outdoor market stall">Mercado al aire libre</option>
+                                  <option value="bright coworking space">Coworking</option>
+                                  <option value="small retail store interior">Tienda minorista</option>
+                                  <option value="kitchen of a small restaurant">Cocina de restaurante</option>
+                                  <option value="street vendor setup">Vendedor callejero</option>
+                                  <option value="minimalist studio apartment">Apartamento minimalista</option>
+                                </select>
+                              </div>
+                              <div>
+                                <label className="text-[9px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">Iluminación</label>
+                                <select value={humanVariationManual.iluminacion} onChange={e => setHumanVariationManual(p => ({ ...p, iluminacion: e.target.value }))} className="w-full px-3 py-2 bg-slate-800 border border-slate-700 text-white text-xs rounded-xl outline-none">
+                                  <option value="golden morning light from window">Luz de mañana</option>
+                                  <option value="bright noon natural light">Luz natural mediodía</option>
+                                  <option value="soft studio lighting">Iluminación de estudio</option>
+                                  <option value="warm evening indoor light">Luz cálida de tarde</option>
+                                  <option value="blue hour ambient light">Hora azul</option>
+                                  <option value="harsh midday sun outdoors">Sol exterior fuerte</option>
+                                </select>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
                       {/* Botón generar */}
                       <button
                         onClick={handleGenerateCarousel}
