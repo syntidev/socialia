@@ -2322,6 +2322,7 @@ mutation CreatePost {
           <div className="max-w-7xl mx-auto px-4 w-full">
             <ContentCalendar
               onLoadPost={(post) => {
+                console.log('onLoadPost payload:', JSON.stringify(post));
                 // Mapear producto
                 const productoMap: Record<string, ProductType> = {
                   'MAIN': ProductType.MAIN,
@@ -2361,6 +2362,13 @@ mutation CreatePost {
                     productType: mappedProduct,
                   }));
                 }
+
+                setSocialAnalysis(null);
+                setResult(null);
+                setImagenSellada(null);
+                setSlides([]);
+                setActiveSlideIndex(0);
+                setError(null);
 
                 setActiveTab('studio');
                 setActivePhase(AppPhase.PHASE_01);
