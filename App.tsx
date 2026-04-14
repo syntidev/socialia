@@ -674,6 +674,7 @@ const App: React.FC = () => {
         socialAnalysis.body,
         socialAnalysis.cta,
         socialAnalysis.question,
+        '👇 Comenta INFO y te envío el link directo.',
       ];
       if (isFacebook) {
         captionParts.push(`👉 ${productUrl}`);
@@ -2545,6 +2546,8 @@ mutation CreatePost {
                       <span className="font-bold">{socialAnalysis.cta}</span>
                       {"\n\n"}
                       {socialAnalysis.question}
+                      {"\n\n"}
+                      <span className="font-bold text-indigo-600">👇 Comenta INFO y te envío el link directo.</span>
                       {"\n\n"}
                       <span className="text-pink-600 font-medium">
                         {Array.isArray(socialAnalysis.hashtags) ? socialAnalysis.hashtags.map(h => `#${h}`).join(' ') : ''}
