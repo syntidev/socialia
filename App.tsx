@@ -783,12 +783,16 @@ mutation CreatePost {
     schedulingType: automatic,
     mode: ${bufferSchedule ? 'customScheduled' : 'addToQueue'},
     ${bufferSchedule ? `dueAt: "${new Date(bufferSchedule).toISOString()}",` : ''}
-    metadata: {
+    ${isFacebook ? `metadata: {
+      facebook: {
+        type: post
+      }
+    },` : `metadata: {
       instagram: {
         type: post,
         shouldShareToFeed: true
       }
-    },
+    },`}
     assets: {
       images: [{ url: "${cloudinaryUrl}" }]
     }
