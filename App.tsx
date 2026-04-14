@@ -928,7 +928,7 @@ mutation CreatePost {
               <SparklesIcon className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h1 className="text-lg font-black tracking-tight text-white leading-none">Socia<span className="text-brand-primary">liA</span></h1>
+              <h1 className="text-lg font-black tracking-tight text-white leading-none">Social<span className="text-brand-primary">iA</span></h1>
               <a href="https://syntiweb.com/socialia" target="_blank" className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mt-1 hover:text-brand-primary transition-colors">syntiweb.com/socialia</a>
             </div>
           </div>
@@ -1464,11 +1464,6 @@ mutation CreatePost {
                       >
                         <Icon icon={prod.icon} className={`w-6 h-6 transition-transform group-hover:scale-110 ${formData.productType === prod.id ? 'text-white' : 'text-slate-500'}`} />
                         <span className="text-[10px] font-black tracking-widest uppercase">{prod.label}</span>
-                        {formData.productType === prod.id && (
-                          <div className="absolute -top-2 -right-2 w-6 h-6 bg-white rounded-full flex items-center justify-center shadow-lg animate-in zoom-in">
-                            <Icon icon="tabler:check" className="w-4 h-4" style={{ color: prod.color }} />
-                          </div>
-                        )}
                       </button>
                     ))}
                   </div>
