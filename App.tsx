@@ -118,6 +118,7 @@ const App: React.FC = () => {
   const [isSending, setIsSending] = useState(false);
   const [sendSuccess, setSendSuccess] = useState(false);
   const [imagenSellada, setImagenSellada] = useState<string | null>(null);
+  const [imagenYaSellada, setImagenYaSellada] = useState(false);
   const [isSealing, setIsSealing] = useState(false);
   const [activePhase, setActivePhase] = useState<AppPhase>(AppPhase.PHASE_01);
   const [activeTab, setActiveTab] = useState<'studio' | 'calendar'>('studio');
@@ -340,6 +341,7 @@ const App: React.FC = () => {
     setResult(null);
     setSocialAnalysis(null);
     analysisCache.current.clear();
+    setImagenYaSellada(false);
     setImagenSellada(null);
     
     // Sync reviewed texts from formData when generating new art
@@ -2212,14 +2214,32 @@ mutation CreatePost {
                       <ArrowDownTrayIcon className="w-5 h-5" />
                       DESCARGAR
                     </button>
-                    <button
-                      onClick={handleAnalyzeSocial}
-                      disabled={!isPhaseEnabled(AppPhase.PHASE_03) || isAnalyzing || cooldown}
-                      className="flex-[2] py-4 bg-green-600 hover:bg-green-700 text-white rounded-2xl font-black text-[10px] tracking-widest flex items-center justify-center gap-3 transition-all shadow-strong disabled:opacity-30 disabled:grayscale"
-                    >
-                      <Icon icon={isAnalyzing ? "tabler:loader-2" : cooldown ? "tabler:clock" : "tabler:rocket"} className={`w-6 h-6 ${isAnalyzing ? 'animate-spin' : ''}`} />
-                      {isAnalyzing ? 'ANALIZANDO...' : cooldown ? 'ESPERA...' : 'CONTINUAR A ESTRATEGIA'}
-                    </button>
+                    <div className="flex-[2] flex flex-col gap-2">
+                      <label className="flex items-center gap-2 cursor-pointer mb-3">
+                        <input
+                          type="checkbox"
+                          checked={imagenYaSellada}
+                          onChange={(e) => setImagenYaSellada(e.target.checked)}
+                          className="w-4 h-4 accent-indigo-600"
+                        />
+                        <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">
+                          Imagen lista — ya tiene título, logo y sello
+                        </span>
+                      </label>
+                      <button
+                        onClick={() => {
+                          if (imagenYaSellada) {
+                            setImagenSellada(formData.base64Image ?? null);
+                          }
+                          handleAnalyzeSocial();
+                        }}
+                        disabled={!isPhaseEnabled(AppPhase.PHASE_03) || isAnalyzing || cooldown}
+                        className="w-full py-4 bg-green-600 hover:bg-green-700 text-white rounded-2xl font-black text-[10px] tracking-widest flex items-center justify-center gap-3 transition-all shadow-strong disabled:opacity-30 disabled:grayscale"
+                      >
+                        <Icon icon={isAnalyzing ? "tabler:loader-2" : cooldown ? "tabler:clock" : "tabler:rocket"} className={`w-6 h-6 ${isAnalyzing ? 'animate-spin' : ''}`} />
+                        {isAnalyzing ? 'ANALIZANDO...' : cooldown ? 'ESPERA...' : 'CONTINUAR A ESTRATEGIA'}
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
