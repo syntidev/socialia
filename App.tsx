@@ -199,6 +199,7 @@ const App: React.FC = () => {
   });
 
   const previewRef = useRef<HTMLDivElement>(null);
+  const analysisCache = useRef<Map<string, AIAnalysis>>(new Map());
 
   useEffect(() => {
     setImagenSellada(null);
@@ -338,6 +339,7 @@ const App: React.FC = () => {
     setError(null);
     setResult(null);
     setSocialAnalysis(null);
+    analysisCache.current.clear();
     setImagenSellada(null);
     
     // Sync reviewed texts from formData when generating new art
@@ -483,7 +485,14 @@ const App: React.FC = () => {
     const imageToAnalyze = creationMode === CreationMode.CAROUSEL && slides.length > 0
       ? (slides[0].sealedImage || slides[0].imageUrl || null)
       : (imagenSellada || result?.imageUrl || formData.base64Image || null);
-    
+
+    const cacheKey = imagenSellada || result?.imageUrl || formData.base64Image || 'no-image';
+    if (analysisCache.current.has(cacheKey)) {
+      setSocialAnalysis(analysisCache.current.get(cacheKey)!);
+      setActivePhase(AppPhase.PHASE_03);
+      return;
+    }
+
     setIsAnalyzing(true);
     setError(null);
     setActivePhase(AppPhase.PHASE_03);
@@ -510,6 +519,7 @@ const App: React.FC = () => {
       );
       
       console.log('DEBUG: Análisis recibido con éxito:', analysis);
+      analysisCache.current.set(cacheKey, analysis);
       setSocialAnalysis(analysis);
       
       // Activar cooldown de 3 segundos
