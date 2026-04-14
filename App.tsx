@@ -2467,6 +2467,17 @@ mutation CreatePost {
                         </div>
                       )}
 
+                      {selectedProfileId === FACEBOOK_CHANNEL_ID && (
+                        <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-2">
+                          <Icon icon="tabler:alert-triangle" className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
+                          <p className="text-[10px] text-amber-700 font-medium leading-relaxed">
+                            Esta imagen fue generada en formato Instagram (4:5).
+                            Facebook Feed requiere formato horizontal (1.91:1).
+                            La imagen se publicará con franjas laterales.
+                          </p>
+                        </div>
+                      )}
+
                       <button
                         onClick={sendToBuffer}
                         disabled={isSending || !selectedProfileId}
