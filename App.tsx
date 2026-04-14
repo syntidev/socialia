@@ -646,6 +646,24 @@ const App: React.FC = () => {
     }
   };
 
+  const buildCaption = (analysis: AIAnalysis, isFb: boolean, prodUrl: string): string => {
+    const parts = [
+      analysis.hook,
+      analysis.body,
+      analysis.cta,
+      analysis.question,
+    ];
+    if (isFb) {
+      parts.push(`👉 ${prodUrl}`);
+      const topHashtags = analysis.hashtags.slice(0, 2).map((h: string) => `#${h}`).join(' ');
+      if (topHashtags) parts.push(topHashtags);
+    } else {
+      parts.push('👇 Comenta INFO y te envío el link directo.');
+      parts.push(analysis.hashtags.map((h: string) => `#${h}`).join(' '));
+    }
+    return parts.filter(Boolean).join('\n\n');
+  };
+
   const sendToBuffer = async () => {
     if (!socialAnalysis || !selectedProfileId) return;
 
@@ -669,21 +687,7 @@ const App: React.FC = () => {
       const productUrl = productUrls[modalProductType] || 'syntiweb.com';
 
       // ── Construir caption (igual para los 3 modos) ──
-      const captionParts = [
-        socialAnalysis.hook,
-        socialAnalysis.body,
-        socialAnalysis.cta,
-        socialAnalysis.question,
-        '👇 Comenta INFO y te envío el link directo.',
-      ];
-      if (isFacebook) {
-        captionParts.push(`👉 ${productUrl}`);
-        const topHashtags = socialAnalysis.hashtags.slice(0, 2).map((h: string) => `#${h}`).join(' ');
-        if (topHashtags) captionParts.push(topHashtags);
-      } else {
-        captionParts.push(socialAnalysis.hashtags.map((h: string) => `#${h}`).join(' '));
-      }
-      const fullCaption = captionParts.filter(Boolean).join('\n\n');
+      const fullCaption = buildCaption(socialAnalysis, isFacebook, productUrl);
 
       // ── CAROUSEL: subir todas las imágenes en paralelo ──
       if (creationMode === CreationMode.CAROUSEL) {
@@ -2536,26 +2540,14 @@ mutation CreatePost {
 
               <div className="space-y-2">
                 <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.15em] mb-2 block">Vista Previa del Caption</label>
-                <div className="p-5 bg-gray-50 border-2 border-gray-100 rounded-2xl text-xs text-gray-700 max-h-48 overflow-y-auto leading-relaxed whitespace-pre-wrap">
-                  {socialAnalysis ? (
-                    <>
-                      <span className="font-black text-indigo-600">{socialAnalysis.hook}</span>
-                      {"\n\n"}
-                      {socialAnalysis.body}
-                      {"\n\n"}
-                      <span className="font-bold">{socialAnalysis.cta}</span>
-                      {"\n\n"}
-                      {socialAnalysis.question}
-                      {"\n\n"}
-                      <span className="font-bold text-indigo-600">👇 Comenta INFO y te envío el link directo.</span>
-                      {"\n\n"}
-                      <span className="text-pink-600 font-medium">
-                        {Array.isArray(socialAnalysis.hashtags) ? socialAnalysis.hashtags.map(h => `#${h}`).join(' ') : ''}
-                      </span>
-                    </>
-                  ) : (
-                    <p className="italic text-gray-400">Genera la estrategia para ver el caption unificado.</p>
-                  )}
+                <div className="p-5 bg-gray-50 border-2 border-gray-100 rounded-2xl max-h-48 overflow-y-auto">
+                  <pre className="whitespace-pre-wrap text-xs text-gray-700 leading-relaxed">
+                    {socialAnalysis ? buildCaption(
+                      socialAnalysis,
+                      selectedProfileId === FACEBOOK_CHANNEL_ID,
+                      productUrls[modalProductType]
+                    ) : 'Genera la estrategia para ver el caption.'}
+                  </pre>
                 </div>
               </div>
             </div>
