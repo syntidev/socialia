@@ -1029,10 +1029,10 @@ mutation CreatePost {
             >
               {/* Input Panel */}
               <section className="lg:col-span-7 space-y-8">
-                <div className="glass-card p-8 space-y-8">
+                <div className="glass-card p-4 md:p-8 space-y-4 md:space-y-8">
                   
                   {/* ── PASO 0: Selector de formato ── */}
-                  <div className="mb-8 p-6 bg-slate-800/30 rounded-3xl border border-slate-700/50">
+                  <div className="mb-8 p-4 md:p-6 bg-slate-800/30 rounded-3xl border border-slate-700/50">
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4 text-center">
                       ¿Qué vas a crear hoy?
                     </p>
@@ -1050,13 +1050,13 @@ mutation CreatePost {
                             if (mode === CreationMode.STORY) setFormData(p => ({ ...p, format: FormatType.REEL }));
                             if (mode === CreationMode.CAROUSEL) setFormData(p => ({ ...p, format: FormatType.FEED }));
                           }}
-                          className={`flex flex-col items-center gap-2 py-5 rounded-2xl border-2 transition-all group ${
+                          className={`flex flex-col items-center gap-2 py-3 rounded-2xl border-2 transition-all group ${
                             creationMode === mode
                               ? 'border-brand-primary bg-brand-primary/10 text-brand-primary shadow-strong'
                               : 'border-slate-700 bg-slate-800/50 text-slate-500 hover:border-slate-600 hover:text-slate-300'
                           }`}
                         >
-                          <Icon icon={icon} className={`w-6 h-6 ${creationMode === mode ? 'text-brand-primary' : 'text-slate-500 group-hover:text-slate-400'}`} />
+                          <Icon icon={icon} className={`w-5 h-5 ${creationMode === mode ? 'text-brand-primary' : 'text-slate-500 group-hover:text-slate-400'}`} />
                           <span className="font-black text-[11px] tracking-widest">{label}</span>
                           <span className="text-[9px] font-bold opacity-60 uppercase tracking-tighter">{sub}</span>
                         </button>
@@ -1065,7 +1065,7 @@ mutation CreatePost {
                   </div>
 
                   {/* Section: Visual Style */}
-                  <div className="space-y-8 p-5 bg-slate-800/30 rounded-[2rem] border border-slate-700/50 shadow-inner">
+                  <div className="space-y-8 p-3 md:p-5 bg-slate-800/30 rounded-[2rem] border border-slate-700/50 shadow-inner">
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-lg bg-brand-primary/20 flex items-center justify-center">
@@ -1097,7 +1097,7 @@ mutation CreatePost {
                           onClick={() => setFormData(p => ({ ...p, mode: mode.id }))}
                           className={`flex items-center justify-center gap-3 p-5 rounded-2xl border-2 transition-all ${
                             formData.mode === mode.id
-                              ? 'bg-brand-primary border-brand-primary text-white shadow-strong scale-[1.02]'
+                              ? 'bg-brand-primary border-brand-primary text-white shadow-strong'
                               : 'bg-slate-800/50 border-slate-700/50 text-slate-500 hover:border-slate-600 hover:text-slate-300'
                           }`}
                         >
@@ -1166,7 +1166,7 @@ mutation CreatePost {
                   )}
 
                   {creationMode === CreationMode.CAROUSEL && (
-                    <div className="bg-slate-800/50 border border-slate-700/50 rounded-3xl p-6 mb-8 space-y-6">
+                    <div className="bg-slate-800/50 border border-slate-700/50 rounded-3xl p-4 md:p-6 mb-8 space-y-6">
                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
                         Configurar carrusel
                       </p>
@@ -1222,7 +1222,7 @@ mutation CreatePost {
                               onClick={() => setFormData(p => ({ ...p, mode: mode.id }))}
                               className={`flex items-center justify-center gap-3 p-5 rounded-2xl border-2 transition-all ${
                                 formData.mode === mode.id
-                                  ? 'bg-brand-primary border-brand-primary text-white shadow-strong scale-[1.02]'
+                                  ? 'bg-brand-primary border-brand-primary text-white shadow-strong'
                                   : 'bg-slate-800/50 border-slate-700/50 text-slate-500 hover:border-slate-600 hover:text-slate-300'
                               }`}
                             >
@@ -1431,7 +1431,7 @@ mutation CreatePost {
             {/* Simplified Form Phase 01 */}
             <div className="space-y-10">
               {/* Section: Core Identity */}
-              <div className="space-y-6 p-5 bg-slate-800/30 rounded-[2rem] border border-slate-700/50 shadow-inner">
+              <div className="space-y-6 p-3 md:p-5 bg-slate-800/30 rounded-[2rem] border border-slate-700/50 shadow-inner">
                 <div className="flex items-center gap-3 mb-2">
                   <div className="w-8 h-8 rounded-lg bg-brand-primary/20 flex items-center justify-center">
                     <Icon icon="tabler:brand-instagram" className="w-5 h-5 text-brand-primary" />
@@ -1442,7 +1442,7 @@ mutation CreatePost {
                 {/* Product Selector */}
                 <div className="space-y-4">
                   <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.15em] mb-2 block">Producto / Nicho</label>
-                  <div className="flex gap-3 overflow-x-auto pb-1">
+                  <div className="grid grid-cols-4 gap-2">
                     {[
                       { id: ProductType.MAIN, label: 'SYNTIweb', color: nicheColors[ProductType.MAIN], icon: 'tabler:world' },
                       { id: ProductType.STUDIO, label: 'STUDIO', color: nicheColors[ProductType.STUDIO], icon: 'tabler:camera' },
@@ -1452,17 +1452,17 @@ mutation CreatePost {
                       <button
                         key={prod.id}
                         onClick={() => setFormData(p => ({ ...p, productType: prod.id }))}
-                        className={`group relative flex flex-shrink-0 flex-row items-center gap-3 px-4 py-3 rounded-2xl border-2 transition-all duration-300 ${
+                        className={`group relative flex min-w-0 flex-col items-center gap-1 p-2 md:p-3 rounded-2xl border-2 transition-all duration-300 ${
                           formData.productType === prod.id
-                            ? 'shadow-strong scale-105 border-transparent'
+                            ? 'shadow-strong border-transparent'
                             : 'bg-slate-800/50 border-slate-700/50 text-slate-500 hover:border-slate-600 hover:text-slate-300'
                         }`}
-                        style={{ 
+                        style={{
                           backgroundColor: formData.productType === prod.id ? prod.color : undefined,
                           color: formData.productType === prod.id ? 'white' : undefined
                         }}
                       >
-                        <Icon icon={prod.icon} className={`w-6 h-6 transition-transform group-hover:scale-110 ${formData.productType === prod.id ? 'text-white' : 'text-slate-500'}`} />
+                        <Icon icon={prod.icon} className={`w-5 h-5 ${formData.productType === prod.id ? 'text-white' : 'text-slate-500'}`} />
                         <span className="text-[10px] font-black tracking-widest uppercase">{prod.label}</span>
                       </button>
                     ))}
@@ -1473,7 +1473,7 @@ mutation CreatePost {
                 {/* Objective Selector */}
                 <div className="space-y-4">
                   <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.15em] mb-2 block">Objetivo</label>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-3 gap-2">
                     {[
                       { id: PostObjective.SELL, label: 'Vender', icon: 'tabler:shopping-cart' },
                       { id: PostObjective.EDUCATE, label: 'Enseñar', icon: 'tabler:school' },
@@ -1482,9 +1482,9 @@ mutation CreatePost {
                       <button
                         key={obj.id}
                         onClick={() => setFormData(p => ({ ...p, postObjective: obj.id }))}
-                        className={`flex items-center justify-center gap-3 p-4 rounded-2xl border-2 transition-all ${
+                        className={`flex items-center justify-center gap-3 p-2 md:p-3 rounded-2xl border-2 transition-all ${
                           formData.postObjective === obj.id
-                            ? 'bg-brand-primary border-brand-primary text-white shadow-strong scale-[1.02]'
+                            ? 'bg-brand-primary border-brand-primary text-white shadow-strong'
                             : 'bg-slate-800/50 border-slate-700/50 text-slate-500 hover:border-slate-600 hover:text-slate-300'
                         }`}
                       >
