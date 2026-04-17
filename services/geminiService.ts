@@ -797,7 +797,10 @@ CRITICAL RULES:
 - Real person as subject (not illustrated, not cartoon).
 - Slide progression context: ${slideNumber === 1 ? 'opening slide, problem awareness' : slideNumber === totalSlides ? 'closing slide, call to action energy' : 'middle slide, educational tone'}
 
-Format: 3:4 portrait, high resolution.`;
+Aspect ratio: 3:4 vertical portrait (taller than wide, like a phone screen).
+  Width MUST be shorter than height. NOT square. NOT landscape.
+  Output dimensions: 768px wide × 1024px tall minimum.
+  High resolution, photorealistic.`;
   }
 
   public async detectTextInImage(imageBase64: string): Promise<{ hasTitle: boolean; hasSubtitle: boolean; title?: string; subtitle?: string }> {
