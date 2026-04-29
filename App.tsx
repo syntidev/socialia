@@ -1394,30 +1394,45 @@ mutation CreatePost {
                         {slides.map((slide, i) => (
                           <div
                             key={slide.id}
-                            onClick={() => {
-                              if (slide.status !== 'done' || !slide.imageUrl) return;
-                              setActiveSlideIndex(i);
-                              setResult({ imageUrl: slide.imageUrl, caption: slide.hook });
-                              setReviewedText(slide.hook);
-                              setReviewedSecondaryText(slide.benefit);
-                              setImagenSellada(slide.sealedImage || null);
-                              if (slide.editorState) {
-                                setVisualEditor(slide.editorState);
-                              } else {
-                                resetVisualEditor(formData.preset || PresetType.DARK_NAVY);
-                              }
-                              setActivePhase(AppPhase.PHASE_02);
-                            }}
-                            className={`flex-shrink-0 w-32 rounded-2xl overflow-hidden border-2 transition-all cursor-pointer ${
+                            className={`flex-shrink-0 w-32 rounded-2xl overflow-hidden border-2 transition-all ${
                               activeSlideIndex === i ? 'border-[#4A80E4]' : 'border-gray-200'
-                            }`}
+                            } ${slide.status === 'done' && slide.imageUrl ? 'cursor-pointer' : 'cursor-default'}`}
                           >
                             {slide.status === 'done' && slide.imageUrl ? (
-                              <div className="relative">
+                              <div className="relative group">
                                 <img src={slide.imageUrl} alt={`Slide ${i + 1}`} className="w-full aspect-[3/4] object-cover" />
+                                {/* Overlay de edición — visible al hover */}
+                                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-all flex flex-col items-center justify-center gap-1 opacity-0 group-hover:opacity-100">
+                                  <button
+                                    onClick={e => {
+                                      e.stopPropagation();
+                                      setActiveSlideIndex(i);
+                                      setResult({ imageUrl: slide.imageUrl!, caption: slide.hook });
+                                      setReviewedText(slide.hook);
+                                      setReviewedSecondaryText(slide.benefit);
+                                      setImagenSellada(slide.sealedImage || null);
+                                      setVisualEditor(slide.editorState ?? getDefaultEditorForSlide(i, slides.length));
+                                      setActivePhase(AppPhase.PHASE_02);
+                                    }}
+                                    className="text-[8px] bg-[#4A80E4] text-white px-2 py-1 rounded-lg font-black flex items-center gap-1"
+                                  >
+                                    <PencilIcon className="w-2.5 h-2.5" /> EDITAR
+                                  </button>
+                                  <button
+                                    onClick={e => { e.stopPropagation(); handleRetrySlide(i); }}
+                                    className="text-[8px] bg-slate-600 text-white px-2 py-1 rounded-lg font-black"
+                                  >
+                                    REGENERAR
+                                  </button>
+                                </div>
                                 <div className="absolute bottom-0 left-0 right-0 bg-black/60 p-1">
                                   <p className="text-white text-[8px] font-bold truncate">{slide.hook}</p>
                                 </div>
+                                {slide.sealedImage && (
+                                  <div className="absolute top-1 right-1 w-4 h-4 rounded-full bg-green-500 flex items-center justify-center">
+                                    <CheckIcon className="w-2.5 h-2.5 text-white" />
+                                  </div>
+                                )}
                               </div>
                             ) : slide.status === 'generating' || slide.status === 'pending' ? (
                               <div className="w-full aspect-[3/4] bg-gray-100 flex flex-col items-center justify-center gap-2">

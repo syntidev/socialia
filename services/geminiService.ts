@@ -459,31 +459,37 @@ Create a photorealistic advertising image for Instagram in ${format}.
 
 SCENE: ${randomSubject}, ${action}.
 
-PHONE INTERACTION RULES (CRITICAL):
-- The person interacts with the FRONT of the smartphone (screen side).
-- The screen faces the person's face OR the camera — never the back.
-- DO NOT render the screen on the back of the phone.
-- Hands should look natural and undeformed.
+PHONE GEOMETRY (CRITICAL — read carefully):
+The person holds the smartphone with their palm behind the device and their thumb on the left edge.
+The GLASS SCREEN faces outward toward the camera — the viewer can see the lit display.
+The camera bump (rear cameras) is on the side facing AWAY from the camera, hidden behind the device.
+The person's fingers wrap around the back — they are not visible from the front.
+The screen should show a glowing UI interface in ${brand.primary} color tones.
+Think of it as: screen → person's face direction AND screen → camera direction simultaneously (the person is slightly angled).
+NEVER show the camera module/lens on the visible face of the phone.
 
 HUMAN DIRECTION:
 - Authentic Venezuelan features — diverse, real, not generic stock photo.
 - Natural, candid expressions of success and satisfaction.
 - Modern professional clothing appropriate to the setting.
-- Person is secondary — the PHONE SCREEN is the focal point.
+- Background fills the entire frame naturally — no solid color panels, no flat color zones.
+- Background is a softly blurred (bokeh) version of the environment: office walls, plants, shelving, etc.
 
 BRAND INTEGRATION:
 - Subtle brand color ${brand.primary} as ambient glow from the phone screen or environmental accent.
 - Phone screen UI shows a clean modern interface in ${brand.primary} (no text on screen).
 
 COMPOSITION:
-- Leave clean space at top 25% for text overlay.
-- Leave clean space at bottom 20% for text overlay.
+- The subject occupies the right 60% of the frame. Left side: natural bokeh background — NOT a flat colored panel.
+- Leave clean space at top 25% for text overlay (sky, ceiling, or soft blur — not solid color).
+- Leave clean space at bottom 20% for text overlay (floor, surface, or soft blur — not solid color).
 - High-end editorial photography style.
 
 FORBIDDEN:
+- No solid color panels or flat geometric shapes filling any zone of the image.
 - No market stalls, no street vendors, no arepas, no outdoor markets.
 - No text, words, letters, logos, watermarks.
-- No phone screen on the back of the device.
+- No camera bump or rear lens visible on the front-facing side of the phone.
 - No distorted hands or faces.
 
 TECHNICAL:
@@ -514,58 +520,50 @@ TEXT REFERENCE (do not render): "${data.textInput}"
     const roleVisualGuide: Record<CarouselSlideRole, string> = {
       [CarouselSlideRole.PORTADA]: `
 PORTADA (Slide 1 of ${totalSlides}) — MAXIMUM VISUAL IMPACT.
-Composition: Hero centered. Brand color ${brand.primary} dominant.
-Energy: High contrast, dramatic lighting, bold and eye-catching.
+Brand color ${brand.primary} dominant. High contrast, dramatic lighting, bold and eye-catching.
 The viewer must stop scrolling at this slide.
 ${isHumanMode
-  ? `Include a confident Venezuelan professional in a modern setting with a smartphone showing a ${brand.primary}-colored UI.`
+  ? `Confident Venezuelan professional centered in frame, holding a smartphone with the GLASS SCREEN facing the camera (${brand.primary} glow on screen). Background: dramatic dark environment with subtle brand-colored ambient light. Background fills the full frame naturally — no flat colored panels.`
   : `3D smartphone centered, dramatic angle, ${brand.primary} glow emanating from screen, floating brand-colored particles.`
 }`,
       [CarouselSlideRole.PROBLEMA]: `
 PROBLEMA (Slide ${slideNumber} of ${totalSlides}) — Tension and awareness.
-Composition: Minimal, dark, desaturated. High negative space.
-Energy: Soft, understated — visual contrast with the solution slides to come.
-The visual should feel like "before the solution" — uncertain, disorganized, overwhelmed.
+Desaturated, dark, minimal. High negative space. Feels like "before the solution".
 ${isHumanMode
-  ? `Venezuelan business person looking frustrated or overwhelmed at their phone or paper documents.`
+  ? `Venezuelan business person looking frustrated or overwhelmed at their phone or paper documents. Background: naturally blurred office or workspace, dark tones. No flat color panels anywhere.`
   : `Dark abstract tech background, fragmented or disconnected UI elements suggesting disorder.`
 }`,
       [CarouselSlideRole.VALOR]: `
 VALOR (Slide ${slideNumber} of ${totalSlides}) — Key benefit revealed.
-Composition: Left text zone, right visual. Clean and professional.
 Energy: Balanced SaaS ad — professional, reassuring, clear.
 ${isHumanMode
-  ? `Venezuelan entrepreneur looking satisfied with their phone UI clearly visible.`
+  ? `Venezuelan entrepreneur holding smartphone with SCREEN FACING THE CAMERA (${brand.primary} UI visible on screen). Subject positioned on the right side of frame. LEFT SIDE of frame: naturally soft-blurred bokeh of the background environment (office wall, plants, bookshelves) — NOT a flat blue or colored panel. The left area is environmental bokeh, same as any professional photography.`
   : `Smartphone showing a clean ${brand.primary}-colored UI feature. Floating icon elements.`
 }`,
       [CarouselSlideRole.VALOR_1]: `
 BENEFICIO 1 (Slide ${slideNumber} of ${totalSlides}) — First key benefit.
-Composition: Left text zone, right visual. Brand colors prominent.
 ${isHumanMode
-  ? `Venezuelan business owner interacting happily with their device.`
+  ? `Venezuelan business owner interacting with device on the right side of frame. Left side is natural bokeh of the environment — softly blurred background, not a solid color block. Full-frame photorealistic scene.`
   : `Floating UI with ${brand.primary} accents showing a key product feature.`
 }`,
       [CarouselSlideRole.VALOR_2]: `
 BENEFICIO 2 (Slide ${slideNumber} of ${totalSlides}) — Second key benefit.
-Composition: Dashboard overlay style — multiple UI layers visible.
-Show depth and richness of the product.
 ${isHumanMode
-  ? `Close-up of phone screen with hands, showing a different product feature.`
+  ? `Close-up of person's hands holding the phone, screen facing camera, showing a product UI in ${brand.primary}. Background fully blurred (bokeh) — a real photographic depth-of-field look, not geometric color blocks.`
   : `Dashboard UI with analytics elements in ${brand.primary} tones.`
 }`,
       [CarouselSlideRole.VALOR_3]: `
 BENEFICIO 3 (Slide ${slideNumber} of ${totalSlides}) — Third key benefit, dynamic energy.
-Composition: Diagonal dynamic — energetic and modern.
 ${isHumanMode
-  ? `Venezuelan professional in action, smartphone tilted showing a feature UI.`
+  ? `Venezuelan professional in action, smartphone slightly tilted but still with screen facing camera. Dynamic angle. Background is natural motion-blurred or bokeh environment.`
   : `Smartphone tilted at a dynamic angle with ${brand.primary} light trails.`
 }`,
       [CarouselSlideRole.COMPARACION]: `
 ANTES vs DESPUÉS (Slide ${slideNumber} of ${totalSlides}) — Comparison / Transformation.
-Composition: Split screen — left side dark/disorganized (BEFORE), right side bright/branded/organized (AFTER).
-Left half: dark, desaturated, messy UI or paper/analog metaphor.
-Right half: ${brand.primary} colored, bright, clean product UI showing the solution.
-Clear visual divide between the two halves.`,
+Split image — left half vs right half with a clear visual divide:
+Left half (BEFORE): dark, desaturated, messy — paper documents, disorganized workspace, analog chaos.
+Right half (AFTER): ${brand.primary} colored, bright, clean — smartphone showing organized digital solution.
+Both halves are photorealistic and fill their respective areas completely. No floating panels.`,
       [CarouselSlideRole.CTA]: `
 CTA / CIERRE (Slide ${totalSlides} of ${totalSlides}) — Final call to action.
 Composition: Hero centered. Maximum energy and brand identity.
