@@ -28,7 +28,19 @@ export enum PresetType {
 export enum GenerationMode {
   SMART_BUILDER = 'SMART_BUILDER',
   CLASSIC = 'CLASSIC',
-  HUMAN_SCENE = 'HUMAN_SCENE'
+  HUMAN_SCENE = 'HUMAN_SCENE',
+  DIGITAL_PRODUCT_PROMO = 'DIGITAL_PRODUCT_PROMO'
+}
+
+export enum CarouselSlideRole {
+  PORTADA      = 'PORTADA',
+  PROBLEMA     = 'PROBLEMA',
+  VALOR        = 'VALOR',
+  VALOR_1      = 'VALOR_1',
+  VALOR_2      = 'VALOR_2',
+  VALOR_3      = 'VALOR_3',
+  COMPARACION  = 'COMPARACION',
+  CTA          = 'CTA'
 }
 
 export enum VisualMode {
@@ -262,6 +274,13 @@ export interface CarouselSlide {
   sealedImage: string | null;
   status: 'pending' | 'generating' | 'done' | 'error';
   editorState?: VisualEditorState;
+  // Contexto narrativo — se preserva al regenerar
+  role?: CarouselSlideRole;
+  messageTypeBeat?: MessageType;
+  visualSceneOverride?: VisualScene;
+  compositionOverride?: CompositionType;
+  topic?: string;
+  postObjective?: PostObjective;
 }
 
 export interface CarouselConfig {

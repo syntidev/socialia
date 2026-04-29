@@ -29,7 +29,8 @@ import {
   AppPhase,
   CreationMode,
   CarouselSlide,
-  CarouselConfig
+  CarouselConfig,
+  CarouselSlideRole
 } from './types';
 import RoleTabs from './components/RoleTabs';
 import PostPreview from './components/PostPreview';
@@ -850,7 +851,7 @@ mutation CreatePost {
     setIsGeneratingCarousel(true);
 
     try {
-      // Paso 1: generar todos los hooks de una vez
+      // Paso 1: generar hooks con arco narrativo
       const hooks = await geminiService.generateCarouselHooks(
         carouselConfig.topic,
         carouselConfig.slideCount,
@@ -858,22 +859,26 @@ mutation CreatePost {
         carouselConfig.postObjective
       );
 
-      // Paso 2: inicializar slides en estado pending
+      // Paso 2: inicializar slides con contexto narrativo preservado
       const initialSlides: CarouselSlide[] = hooks.map((h, i) => ({
         id: i,
         hook: h.hook,
         benefit: h.benefit,
         imageUrl: null,
         sealedImage: null,
-        status: 'pending'
+        status: 'pending' as const,
+        role: h.role as CarouselSlideRole,
+        messageTypeBeat: h.messageType as any,
+        topic: carouselConfig.topic,
+        postObjective: carouselConfig.postObjective,
       }));
       setSlides(initialSlides);
 
-      // Paso 3: generar imágenes en serie
+      // Paso 3: generar imágenes en serie con arco narrativo
       await geminiService.generateCarouselImages(
         hooks,
         carouselConfig.productType,
-        formData.mode || 'HUMAN_SCENE',
+        formData.mode || GenerationMode.SMART_BUILDER,
         (index, imageUrl) => {
           setSlides(prev => prev.map((s, i) =>
             i === index ? { ...s, imageUrl, status: 'done' } : s
@@ -884,7 +889,8 @@ mutation CreatePost {
             i === index ? { ...s, status: 'error' } : s
           ));
           console.error(`Slide ${index} failed:`, error);
-        }
+        },
+        carouselConfig.slideCount
       );
     } catch (err) {
       console.error('Carousel generation failed:', err);
@@ -899,19 +905,22 @@ mutation CreatePost {
     setSlides(prev => prev.map((s, i) =>
       i === index ? { ...s, status: 'generating' } : s
     ));
-    await geminiService.generateCarouselImages(
-      [{ hook: slide.hook, benefit: slide.benefit }],
+    // Preserva el contexto narrativo completo del slide (rol, hook, benefit, topic)
+    await geminiService.regenerateSlide(
+      slide,
       carouselConfig.productType,
-      formData.mode || 'HUMAN_SCENE',
-      (_, imageUrl) => {
+      formData.mode || GenerationMode.SMART_BUILDER,
+      slides.length,
+      (imageUrl) => {
         setSlides(prev => prev.map((s, i) =>
           i === index ? { ...s, imageUrl, status: 'done' } : s
         ));
       },
-      (_, error) => {
+      (error) => {
         setSlides(prev => prev.map((s, i) =>
           i === index ? { ...s, status: 'error' } : s
         ));
+        console.error(`Slide ${index} retry failed:`, error);
       }
     );
   };
@@ -1108,10 +1117,11 @@ mutation CreatePost {
                     </div>
 
                     {/* Generation Mode Selector */}
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-3 gap-3">
                       {[
-                        { id: GenerationMode.SMART_BUILDER, label: 'Tech SaaS', icon: '🤖' },
-                        { id: GenerationMode.HUMAN_SCENE, label: 'Escena humana', icon: '👤' },
+                        { id: GenerationMode.SMART_BUILDER,        label: 'Tech SaaS',      icon: '🤖' },
+                        { id: GenerationMode.DIGITAL_PRODUCT_PROMO,label: 'Promo Digital',   icon: '📱' },
+                        { id: GenerationMode.HUMAN_SCENE,           label: 'Escena humana',  icon: '👤' },
                       ].map((mode) => (
                         <button
                           key={mode.id}
@@ -1128,6 +1138,12 @@ mutation CreatePost {
                       ))}
                     </div>
                   </div>
+
+                  {formData.mode === GenerationMode.DIGITAL_PRODUCT_PROMO && (
+                    <div className="p-3 rounded-xl bg-indigo-900/30 border border-indigo-700/40 text-[10px] text-indigo-300 leading-relaxed">
+                      📱 <strong>Promo Digital:</strong> Producto 3D (smartphone/tablet con UI) sobre gradient de marca. Sin personas. Íconos flotantes, glassmorphism, badges. Ideal para carrusel y posts de producto.
+                    </div>
+                  )}
 
                   {formData.mode === GenerationMode.HUMAN_SCENE && (
                     <div className="space-y-4 pt-4 border-t border-slate-700">
@@ -1233,10 +1249,11 @@ mutation CreatePost {
                         <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-3 block">
                           Estilo visual
                         </label>
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-3 gap-3">
                           {[
-                            { id: GenerationMode.SMART_BUILDER, label: 'Tech SaaS', icon: '🤖' },
-                            { id: GenerationMode.HUMAN_SCENE, label: 'Escena humana', icon: '👤' },
+                            { id: GenerationMode.SMART_BUILDER,         label: 'Tech SaaS',     icon: '🤖' },
+                            { id: GenerationMode.DIGITAL_PRODUCT_PROMO, label: 'Promo Digital',  icon: '📱' },
+                            { id: GenerationMode.HUMAN_SCENE,           label: 'Escena humana', icon: '👤' },
                           ].map((mode) => (
                             <button
                               key={mode.id}
@@ -1253,6 +1270,12 @@ mutation CreatePost {
                           ))}
                         </div>
                       </div>
+
+                      {formData.mode === GenerationMode.DIGITAL_PRODUCT_PROMO && (
+                        <div className="p-3 rounded-xl bg-indigo-900/30 border border-indigo-700/40 text-[10px] text-indigo-300 leading-relaxed">
+                          📱 <strong>Promo Digital:</strong> Producto 3D con UI de marca + íconos flotantes + gradient. Sin personas. Cada solución usa su paleta correcta.
+                        </div>
+                      )}
 
                       {formData.mode === GenerationMode.HUMAN_SCENE && (
                         <div className="space-y-4 pt-4 border-t border-slate-700">
@@ -1391,7 +1414,14 @@ mutation CreatePost {
                               </div>
                             )}
                             <div className="p-1 bg-white">
-                              <p className="text-[8px] font-black text-gray-400">SLIDE {i + 1}</p>
+                              <p className="text-[8px] font-black text-gray-400">
+                                SLIDE {i + 1}
+                                {slide.role && (
+                                  <span className="ml-1 text-[7px] text-indigo-400 font-bold">
+                                    · {slide.role.replace('_', ' ')}
+                                  </span>
+                                )}
+                              </p>
                             </div>
                           </div>
                         ))}
