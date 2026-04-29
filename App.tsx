@@ -156,14 +156,21 @@ const App: React.FC = () => {
   const [isGeneratingCarousel, setIsGeneratingCarousel] = useState(false);
   const [activeSlideIndex, setActiveSlideIndex] = useState<number>(0);
 
-  // Hidratar desde localStorage al montar
+  // Hidratar desde localStorage al montar (solo metadatos, sin imágenes base64)
   useEffect(() => {
     const saved = localStorage.getItem('socialia_carousel_draft');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0 && parsed.every(s => s.imageUrl)) {
-          setSlides(parsed);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          // Las imágenes no se persisten — restaurar slots en estado 'error' para poder regenerar
+          const restored = parsed.map((s: any) => ({
+            ...s,
+            imageUrl: null,
+            sealedImage: null,
+            status: 'error' as const,
+          }));
+          setSlides(restored);
           setCreationMode(CreationMode.CAROUSEL);
         } else {
           localStorage.removeItem('socialia_carousel_draft');
@@ -174,10 +181,27 @@ const App: React.FC = () => {
     }
   }, []);
 
-  // Persistir cuando slides cambia
+  // Persistir solo metadatos (hook, benefit, role, topic, editorState) — SIN imageUrl ni sealedImage
   useEffect(() => {
     if (slides.length > 0) {
-      localStorage.setItem('socialia_carousel_draft', JSON.stringify(slides));
+      try {
+        const meta = slides.map(s => ({
+          id:              s.id,
+          hook:            s.hook,
+          benefit:         s.benefit,
+          status:          s.status,
+          role:            s.role,
+          messageTypeBeat: s.messageTypeBeat,
+          topic:           s.topic,
+          postObjective:   s.postObjective,
+          editorState:     s.editorState,
+          // imageUrl y sealedImage excluidos — son demasiado grandes para localStorage
+        }));
+        localStorage.setItem('socialia_carousel_draft', JSON.stringify(meta));
+      } catch {
+        // Si aun así falla, limpiar el storage corrupto sin bloquear la app
+        localStorage.removeItem('socialia_carousel_draft');
+      }
     }
   }, [slides]);
 
