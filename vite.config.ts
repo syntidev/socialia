@@ -4,6 +4,8 @@ import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import svgr from 'vite-plugin-svgr';
 
+import { cloudflare } from "@cloudflare/vite-plugin";
+
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
     return {
@@ -18,11 +20,7 @@ export default defineConfig(({ mode }) => {
           }
         }
       },
-      plugins: [
-        react(),
-        tailwindcss(),
-        svgr()
-      ],
+      plugins: [react(), tailwindcss(), svgr(), cloudflare()],
       define: {
         'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
         'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)
