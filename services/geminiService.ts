@@ -39,8 +39,15 @@ import {
 const MODEL_NAME = "gemini-2.5-flash-image";
 const TEXT_MODEL  = "gemini-3-flash-preview";
 
+// Free tier: 10 RPM, 500 RPD. 60s/10 = 6s teóricos; 7s da margen.
+const IMAGE_MIN_INTERVAL_MS = 7000;
+// 429 → un ciclo de RPM completo + colchón.
+const RATE_LIMIT_BACKOFF_MS = 65000;
+
 // ─── Proxy helper ─────────────────────────────────────────────────────────
 export class GeminiService {
+  private lastImageCallAt = 0;
+
   constructor() {}
 
   private async callProxy(model: string, action: string, payload: any) {
@@ -53,7 +60,9 @@ export class GeminiService {
     if (!response.ok) {
       const errorData = await response.json();
       const message = errorData.error?.message || errorData.error || response.statusText;
-      throw new Error(`Gemini Error: ${message}`);
+      const err: any = new Error(`Gemini Error: ${message}`);
+      err.status = response.status;
+      throw err;
     }
 
     const data = await response.json();
@@ -63,6 +72,23 @@ export class GeminiService {
     };
   }
 
+  // Throttle compartido para todas las llamadas al modelo de imagen
+  // (post único, carrusel y regenerar slide comparten el mismo bucket de 10 RPM).
+  private async throttleImageCall() {
+    const now = Date.now();
+    const elapsed = now - this.lastImageCallAt;
+    if (this.lastImageCallAt > 0 && elapsed < IMAGE_MIN_INTERVAL_MS) {
+      const wait = IMAGE_MIN_INTERVAL_MS - elapsed;
+      await new Promise(r => setTimeout(r, wait));
+    }
+    this.lastImageCallAt = Date.now();
+  }
+
+  private async callImageModel(payload: any) {
+    await this.throttleImageCall();
+    return this.callProxy(MODEL_NAME, 'generateContent', payload);
+  }
+
   private async withRetry<T>(fn: () => Promise<T>, maxRetries = 3, delay = 2000): Promise<T> {
     let lastError: any;
     for (let i = 0; i < maxRetries; i++) {
@@ -70,12 +96,22 @@ export class GeminiService {
         return await fn();
       } catch (error: any) {
         lastError = error;
-        const isRetryable = error.message?.includes('503') ||
-                            error.message?.includes('UNAVAILABLE') ||
-                            error.message?.includes('high demand');
-        if (isRetryable && i < maxRetries - 1) {
-          const waitTime = delay * Math.pow(2, i);
-          console.warn(`Gemini API saturada. Reintentando en ${waitTime}ms... (${i + 1}/${maxRetries})`);
+        const msg = error.message || '';
+        const isRateLimit = error.status === 429 ||
+                            msg.includes('429') ||
+                            msg.includes('RESOURCE_EXHAUSTED') ||
+                            msg.toLowerCase().includes('quota') ||
+                            msg.toLowerCase().includes('rate limit');
+        const isTransient = msg.includes('503') ||
+                            msg.includes('UNAVAILABLE') ||
+                            msg.includes('high demand');
+        if ((isRateLimit || isTransient) && i < maxRetries - 1) {
+          const waitTime = isRateLimit
+            ? RATE_LIMIT_BACKOFF_MS
+            : delay * Math.pow(2, i);
+          console.warn(
+            `Gemini ${isRateLimit ? 'rate-limited (429)' : 'saturada'}. Reintentando en ${waitTime}ms... (${i + 1}/${maxRetries})`
+          );
           await new Promise(r => setTimeout(r, waitTime));
           continue;
         }
@@ -678,7 +714,7 @@ TODO EN ESPAÑOL. Sin palabras en inglés.`;
         imagePrompt = `${this.buildSmartPrompt(finalData)}\n\nNEGATIVE PROMPT: ${negativePrompt}`;
       }
 
-      const imageResponse = await this.withRetry(() => this.callProxy(MODEL_NAME, 'generateContent', {
+      const imageResponse = await this.withRetry(() => this.callImageModel({
         contents: [{
           parts: [
             ...(imagePart ? [imagePart] : []),
@@ -714,7 +750,7 @@ TODO EN ESPAÑOL. Sin palabras en inglés.`;
   // ─── generateCarouselHooks — retorna rol narrativo por slide ──────────────
   public async generateCarouselHooks(
     topic: string,
-    slideCount: 3 | 5 | 7,
+    slideCount: number,
     productType: string,
     postObjective: string
   ): Promise<Array<{ hook: string; benefit: string; role: CarouselSlideRole; messageType: string }>> {
@@ -784,7 +820,6 @@ Responde SOLO el array JSON.`
     onSlideError: (index: number, error: string) => void,
     totalSlides?: number
   ): Promise<void> {
-    const DELAY_MS   = 3000;
     const total      = totalSlides || slides.length;
     const slideCount = slides.length;
 
@@ -792,7 +827,7 @@ Responde SOLO el array JSON.`
       try {
         const slide     = slides[i];
         const globalIdx = total - slideCount + i; // índice real en el carrusel completo
-        const arc       = NARRATIVE_ARC[total as 3 | 5 | 7] || NARRATIVE_ARC[5];
+        const arc       = NARRATIVE_ARC[total] || NARRATIVE_ARC[5];
         const roleSpec  = arc[globalIdx] || arc[arc.length - 1];
 
         let prompt: string;
@@ -816,7 +851,8 @@ Responde SOLO el array JSON.`
           );
         }
 
-        const response = await this.withRetry(() => this.callProxy(MODEL_NAME, 'generateContent', {
+        // El throttle de 7s lo aplica callImageModel → no hace falta delay manual.
+        const response = await this.withRetry(() => this.callImageModel({
           contents: [{ role: 'user', parts: [{ text: prompt }] }],
           generationConfig: {
             imageConfig: { aspectRatio: '3:4' }
@@ -836,10 +872,6 @@ Responde SOLO el array JSON.`
       } catch (err: any) {
         onSlideError(i, err.message || 'Generation failed');
       }
-
-      if (i < slideCount - 1) {
-        await new Promise(r => setTimeout(r, DELAY_MS));
-      }
     }
   }
 
@@ -853,7 +885,7 @@ Responde SOLO el array JSON.`
     onError: (error: string) => void
   ): Promise<void> {
     try {
-      const arc      = NARRATIVE_ARC[totalSlides as 3 | 5 | 7] || NARRATIVE_ARC[5];
+      const arc      = NARRATIVE_ARC[totalSlides] || NARRATIVE_ARC[5];
       const roleSpec = arc[slide.id] || arc[arc.length - 1];
 
       let prompt: string;
@@ -876,7 +908,7 @@ Responde SOLO el array JSON.`
         );
       }
 
-      const response = await this.withRetry(() => this.callProxy(MODEL_NAME, 'generateContent', {
+      const response = await this.withRetry(() => this.callImageModel({
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
         generationConfig: {
           imageConfig: { aspectRatio: '3:4' }

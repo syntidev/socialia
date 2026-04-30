@@ -156,6 +156,54 @@ const App: React.FC = () => {
   const [isGeneratingCarousel, setIsGeneratingCarousel] = useState(false);
   const [activeSlideIndex, setActiveSlideIndex] = useState<number>(0);
 
+  // ─── Carousel countdown / ETA ─────────────────────────────────────────
+  // Cada slide tarda ~7s por throttle + ~2s de generación = 8s estimado.
+  const CAROUSEL_SECS_PER_SLIDE = 8;
+  const [currentSlideIdx, setCurrentSlideIdx] = useState<number>(0);
+  const [carouselStartedAt, setCarouselStartedAt] = useState<number>(0);
+  const [tickNow, setTickNow] = useState<number>(Date.now());
+  useEffect(() => {
+    if (!isGeneratingCarousel) return;
+    const t = setInterval(() => setTickNow(Date.now()), 500);
+    return () => clearInterval(t);
+  }, [isGeneratingCarousel]);
+
+  // ─── API Quota tracking (free tier: 500 RPD, reset medianoche PT) ─────
+  const API_DAILY_LIMIT = 500;
+  const getPTDate = () =>
+    new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Los_Angeles' }).format(new Date());
+  const [apiQuotaCount, setApiQuotaCount] = useState<number>(0);
+  useEffect(() => {
+    const today = getPTDate();
+    try {
+      const raw = localStorage.getItem('socialia_api_quota');
+      if (raw) {
+        const p = JSON.parse(raw);
+        if (p.datePT === today) { setApiQuotaCount(p.count || 0); return; }
+      }
+    } catch {}
+    setApiQuotaCount(0);
+    localStorage.setItem('socialia_api_quota', JSON.stringify({ datePT: today, count: 0 }));
+  }, []);
+  const incrementApiQuota = useCallback((n: number = 1) => {
+    setApiQuotaCount(prev => {
+      const today = getPTDate();
+      let base = prev;
+      try {
+        const raw = localStorage.getItem('socialia_api_quota');
+        if (raw) {
+          const p = JSON.parse(raw);
+          base = p.datePT === today ? (p.count || 0) : 0;
+        } else {
+          base = 0;
+        }
+      } catch { base = prev; }
+      const next = base + n;
+      localStorage.setItem('socialia_api_quota', JSON.stringify({ datePT: today, count: next }));
+      return next;
+    });
+  }, []);
+
   // Hidratar desde localStorage al montar (solo metadatos, sin imágenes base64)
   useEffect(() => {
     const saved = localStorage.getItem('socialia_carousel_draft');
@@ -873,6 +921,12 @@ mutation CreatePost {
   const handleGenerateCarousel = async () => {
     if (!carouselConfig.topic.trim()) return;
     setIsGeneratingCarousel(true);
+    setCurrentSlideIdx(0);
+    setCarouselStartedAt(Date.now());
+    setTickNow(Date.now());
+    // Reservamos cuota optimista: 1 (hook) + N (slides). Si falla algo, queda
+    // ligeramente sobrecontado — preferible a quedar corto y pasar el límite.
+    incrementApiQuota(carouselConfig.slideCount + 1);
 
     try {
       // Paso 1: generar hooks con arco narrativo
@@ -907,6 +961,7 @@ mutation CreatePost {
           setSlides(prev => prev.map((s, i) =>
             i === index ? { ...s, imageUrl, status: 'done' } : s
           ));
+          setCurrentSlideIdx(index + 1);
         },
         (index, error) => {
           setSlides(prev => prev.map((s, i) =>
@@ -1017,6 +1072,24 @@ mutation CreatePost {
           </nav>
 
           <div className="flex items-center gap-3">
+            {(() => {
+              const remaining = API_DAILY_LIMIT - apiQuotaCount;
+              const pct = (apiQuotaCount / API_DAILY_LIMIT) * 100;
+              let color = 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10';
+              if (apiQuotaCount >= 450) color = 'text-red-400 border-red-500/40 bg-red-500/10';
+              else if (apiQuotaCount >= 350) color = 'text-amber-400 border-amber-500/30 bg-amber-500/10';
+              return (
+                <div
+                  className={`hidden sm:flex flex-col items-end px-3 py-1.5 rounded-xl border ${color}`}
+                  title={`API hoy: ${apiQuotaCount}/${API_DAILY_LIMIT} · ${remaining} restantes · reset 03:00 hora Colombia (medianoche PT)`}
+                >
+                  <span className="text-[9px] font-black uppercase tracking-widest opacity-80">API hoy</span>
+                  <span className="text-[11px] font-black tabular-nums">
+                    {apiQuotaCount}<span className="opacity-60">/{API_DAILY_LIMIT}</span>
+                  </span>
+                </div>
+              );
+            })()}
             <div className="hidden sm:flex flex-col items-end mr-2">
               <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Plan</span>
               <span className="text-[11px] font-bold text-brand-primary">PRO UNLIMITED</span>
@@ -1251,21 +1324,25 @@ mutation CreatePost {
                         <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-3 block">
                           ¿Cuántos slides?
                         </label>
-                        <div className="flex gap-3">
-                          {([3, 5, 7] as const).map(n => (
+                        <div className="grid grid-cols-6 gap-2">
+                          {([5, 6, 7, 8, 9, 10] as const).map(n => (
                             <button
                               key={n}
                               onClick={() => setCarouselConfig(p => ({ ...p, slideCount: n }))}
-                              className={`flex-1 py-3 rounded-2xl text-sm font-black border-2 transition-all ${
+                              disabled={isGeneratingCarousel}
+                              className={`py-3 rounded-2xl text-sm font-black border-2 transition-all ${
                                 carouselConfig.slideCount === n
                                   ? 'border-brand-primary bg-brand-primary text-white shadow-strong'
                                   : 'border-slate-700 bg-slate-800/50 text-slate-500 hover:border-slate-600'
-                              }`}
+                              } ${isGeneratingCarousel ? 'opacity-50 cursor-not-allowed' : ''}`}
                             >
                               {n}
                             </button>
                           ))}
                         </div>
+                        <p className="text-[10px] text-slate-500 mt-2">
+                          Recomendado: 7 slides (sweet spot retención). Mín 5 · Máx 10.
+                        </p>
                       </div>
 
                       {/* Modo visual */}
@@ -1358,18 +1435,48 @@ mutation CreatePost {
                         </div>
                       )}
 
-                      {/* Botón generar */}
-                      <button
-                        onClick={handleGenerateCarousel}
-                        disabled={isGeneratingCarousel || !carouselConfig.topic.trim()}
-                        className={`w-full py-4 rounded-2xl font-black text-[11px] tracking-[0.2em] text-white transition-all shadow-strong ${
-                          isGeneratingCarousel || !carouselConfig.topic.trim()
-                            ? 'bg-slate-700 cursor-not-allowed opacity-50'
-                            : 'bg-brand-primary hover:bg-brand-primary/90 active:scale-95'
-                        }`}
-                      >
-                        {isGeneratingCarousel ? '⏳ GENERANDO...' : '🎠 GENERAR CARRUSEL'}
-                      </button>
+                      {/* Botón generar — con ETA y countdown anti-doble-click */}
+                      {(() => {
+                        const totalEta = carouselConfig.slideCount * CAROUSEL_SECS_PER_SLIDE;
+                        const elapsed = isGeneratingCarousel
+                          ? Math.floor((tickNow - carouselStartedAt) / 1000)
+                          : 0;
+                        const remaining = Math.max(0, totalEta - elapsed);
+                        const isDisabled = isGeneratingCarousel || !carouselConfig.topic.trim();
+                        let label: string;
+                        if (isGeneratingCarousel) {
+                          const slideNum = Math.min(currentSlideIdx + 1, carouselConfig.slideCount);
+                          label = `⏱ SLIDE ${slideNum} DE ${carouselConfig.slideCount} · ≈${remaining}s RESTANTES`;
+                        } else if (!carouselConfig.topic.trim()) {
+                          label = '🎠 GENERAR CARRUSEL';
+                        } else {
+                          label = `🎠 GENERAR CARRUSEL · ≈${totalEta}s`;
+                        }
+                        return (
+                          <button
+                            onClick={handleGenerateCarousel}
+                            disabled={isDisabled}
+                            style={isGeneratingCarousel ? { pointerEvents: 'none' } : undefined}
+                            className={`w-full py-4 rounded-2xl font-black text-[11px] tracking-[0.2em] text-white transition-all shadow-strong ${
+                              isDisabled
+                                ? 'bg-slate-700 cursor-not-allowed opacity-60'
+                                : 'bg-brand-primary hover:bg-brand-primary/90 active:scale-95'
+                            }`}
+                          >
+                            {label}
+                          </button>
+                        );
+                      })()}
+                      {isGeneratingCarousel && (
+                        <div className="mt-2 h-1 bg-slate-800 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-brand-primary transition-all duration-500"
+                            style={{
+                              width: `${Math.min(100, ((tickNow - carouselStartedAt) / 1000) / (carouselConfig.slideCount * CAROUSEL_SECS_PER_SLIDE) * 100)}%`,
+                            }}
+                          />
+                        </div>
+                      )}
 
                       {slides.length > 0 && (
                         <button
@@ -2463,10 +2570,13 @@ mutation CreatePost {
 
                 // Si es CARRUSEL, precargar carouselConfig con el tema y slides
                 if (mapped.mode === CreationMode.CAROUSEL) {
+                  // Clamp a rango válido 5-10 (puede venir un valor antiguo como 3).
+                  const raw = Number(post.slides) || 7;
+                  const clamped = Math.max(5, Math.min(10, raw));
                   setCarouselConfig(prev => ({
                     ...prev,
                     topic: post.titulo,
-                    slideCount: (post.slides as 3 | 5 | 7) ?? 5,
+                    slideCount: clamped,
                     productType: mappedProduct,
                   }));
                 }
