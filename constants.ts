@@ -255,26 +255,62 @@ export interface SlideRoleSpec {
   label: string;
 }
 
-export const NARRATIVE_ARC: Record<3 | 5 | 7, SlideRoleSpec[]> = {
-  3: [
-    { role: CarouselSlideRole.PORTADA,    messageType: MessageType.EMOTIONAL_HOOK, visualScene: VisualScene.HERO_CENTERED,      composition: CompositionType.CENTERED,               intensity: VisualIntensity.HIGH,   label: 'Portada / Hook' },
-    { role: CarouselSlideRole.VALOR,      messageType: MessageType.BENEFIT,        visualScene: VisualScene.FLOATING_UI,        composition: CompositionType.LEFT_TEXT_RIGHT_VISUAL, intensity: VisualIntensity.MEDIUM, label: 'Valor principal' },
-    { role: CarouselSlideRole.CTA,        messageType: MessageType.OFFER,          visualScene: VisualScene.HERO_CENTERED,      composition: CompositionType.CENTERED,               intensity: VisualIntensity.HIGH,   label: 'CTA / Cierre' },
-  ],
-  5: [
-    { role: CarouselSlideRole.PORTADA,    messageType: MessageType.EMOTIONAL_HOOK, visualScene: VisualScene.HERO_CENTERED,      composition: CompositionType.CENTERED,               intensity: VisualIntensity.HIGH,   label: 'Portada / Hook' },
-    { role: CarouselSlideRole.PROBLEMA,   messageType: MessageType.PROBLEM,        visualScene: VisualScene.FLOW_LINES,         composition: CompositionType.MINIMAL,                intensity: VisualIntensity.SOFT,   label: 'El problema' },
-    { role: CarouselSlideRole.VALOR,      messageType: MessageType.BENEFIT,        visualScene: VisualScene.FLOATING_UI,        composition: CompositionType.LEFT_TEXT_RIGHT_VISUAL, intensity: VisualIntensity.MEDIUM, label: 'Valor / Solución' },
-    { role: CarouselSlideRole.COMPARACION,messageType: MessageType.COMPARISON,     visualScene: VisualScene.COMPARISON,         composition: CompositionType.FRAMED,                 intensity: VisualIntensity.MEDIUM, label: 'Antes vs Después' },
-    { role: CarouselSlideRole.CTA,        messageType: MessageType.OFFER,          visualScene: VisualScene.HERO_CENTERED,      composition: CompositionType.CENTERED,               intensity: VisualIntensity.HIGH,   label: 'CTA / Cierre' },
-  ],
-  7: [
-    { role: CarouselSlideRole.PORTADA,    messageType: MessageType.EMOTIONAL_HOOK, visualScene: VisualScene.HERO_CENTERED,      composition: CompositionType.CENTERED,               intensity: VisualIntensity.HIGH,   label: 'Portada / Hook' },
-    { role: CarouselSlideRole.PROBLEMA,   messageType: MessageType.PROBLEM,        visualScene: VisualScene.FLOW_LINES,         composition: CompositionType.MINIMAL,                intensity: VisualIntensity.SOFT,   label: 'El problema' },
-    { role: CarouselSlideRole.VALOR_1,    messageType: MessageType.BENEFIT,        visualScene: VisualScene.FLOATING_UI,        composition: CompositionType.LEFT_TEXT_RIGHT_VISUAL, intensity: VisualIntensity.MEDIUM, label: 'Beneficio 1' },
-    { role: CarouselSlideRole.VALOR_2,    messageType: MessageType.SOLUTION,       visualScene: VisualScene.DASHBOARD_OVERLAY,  composition: CompositionType.TECH_LOADED,            intensity: VisualIntensity.MEDIUM, label: 'Beneficio 2' },
-    { role: CarouselSlideRole.VALOR_3,    messageType: MessageType.STEP_BY_STEP,   visualScene: VisualScene.SMARTPHONE_TILTED,  composition: CompositionType.DYNAMIC_DIAGONAL,       intensity: VisualIntensity.MEDIUM, label: 'Beneficio 3' },
-    { role: CarouselSlideRole.COMPARACION,messageType: MessageType.COMPARISON,     visualScene: VisualScene.COMPARISON,         composition: CompositionType.FRAMED,                 intensity: VisualIntensity.MEDIUM, label: 'Antes vs Después' },
-    { role: CarouselSlideRole.CTA,        messageType: MessageType.OFFER,          visualScene: VisualScene.HERO_CENTERED,      composition: CompositionType.CENTERED,               intensity: VisualIntensity.HIGH,   label: 'CTA / Cierre' },
-  ],
+// ─── Especificaciones base reutilizables ──────────────────────────────────
+const SPEC_PORTADA: SlideRoleSpec = {
+  role: CarouselSlideRole.PORTADA, messageType: MessageType.EMOTIONAL_HOOK,
+  visualScene: VisualScene.HERO_CENTERED, composition: CompositionType.CENTERED,
+  intensity: VisualIntensity.HIGH, label: 'Portada / Hook',
 };
+const SPEC_PROBLEMA: SlideRoleSpec = {
+  role: CarouselSlideRole.PROBLEMA, messageType: MessageType.PROBLEM,
+  visualScene: VisualScene.FLOW_LINES, composition: CompositionType.MINIMAL,
+  intensity: VisualIntensity.SOFT, label: 'El problema',
+};
+const SPEC_COMPARACION: SlideRoleSpec = {
+  role: CarouselSlideRole.COMPARACION, messageType: MessageType.COMPARISON,
+  visualScene: VisualScene.COMPARISON, composition: CompositionType.FRAMED,
+  intensity: VisualIntensity.MEDIUM, label: 'Antes vs Después',
+};
+const SPEC_CTA: SlideRoleSpec = {
+  role: CarouselSlideRole.CTA, messageType: MessageType.OFFER,
+  visualScene: VisualScene.HERO_CENTERED, composition: CompositionType.CENTERED,
+  intensity: VisualIntensity.HIGH, label: 'CTA / Cierre',
+};
+
+// Pool de "Valor" — el builder rota por estos para n=1..6 valores.
+const VALOR_POOL: SlideRoleSpec[] = [
+  { role: CarouselSlideRole.VALOR_1, messageType: MessageType.BENEFIT,      visualScene: VisualScene.FLOATING_UI,       composition: CompositionType.LEFT_TEXT_RIGHT_VISUAL, intensity: VisualIntensity.MEDIUM, label: 'Beneficio 1' },
+  { role: CarouselSlideRole.VALOR_2, messageType: MessageType.SOLUTION,     visualScene: VisualScene.DASHBOARD_OVERLAY, composition: CompositionType.TECH_LOADED,           intensity: VisualIntensity.MEDIUM, label: 'Beneficio 2' },
+  { role: CarouselSlideRole.VALOR_3, messageType: MessageType.STEP_BY_STEP, visualScene: VisualScene.SMARTPHONE_TILTED, composition: CompositionType.DYNAMIC_DIAGONAL,      intensity: VisualIntensity.MEDIUM, label: 'Beneficio 3' },
+  { role: CarouselSlideRole.VALOR_4, messageType: MessageType.BENEFIT,      visualScene: VisualScene.FLOATING_UI,       composition: CompositionType.CENTERED,              intensity: VisualIntensity.MEDIUM, label: 'Beneficio 4' },
+  { role: CarouselSlideRole.VALOR_5, messageType: MessageType.SOLUTION,     visualScene: VisualScene.DASHBOARD_OVERLAY, composition: CompositionType.LEFT_TEXT_RIGHT_VISUAL, intensity: VisualIntensity.MEDIUM, label: 'Beneficio 5' },
+  { role: CarouselSlideRole.VALOR_6, messageType: MessageType.STEP_BY_STEP, visualScene: VisualScene.SMARTPHONE_TILTED, composition: CompositionType.TECH_LOADED,           intensity: VisualIntensity.MEDIUM, label: 'Beneficio 6' },
+];
+
+// Rangos válidos: 5..10 slides.
+export const CAROUSEL_MIN_SLIDES = 5;
+export const CAROUSEL_MAX_SLIDES = 10;
+
+/**
+ * Construye el arco narrativo dinámicamente.
+ * Estructura: PORTADA → PROBLEMA → VALOR_1..VALOR_n → COMPARACION → CTA
+ * - n=5  → 1 valor
+ * - n=6  → 2 valores
+ * - n=7  → 3 valores  (equivalente al arco original)
+ * - n=10 → 6 valores
+ */
+export function buildNarrativeArc(slideCount: number): SlideRoleSpec[] {
+  const n = Math.max(CAROUSEL_MIN_SLIDES, Math.min(CAROUSEL_MAX_SLIDES, slideCount));
+  const valoresCount = n - 4; // PORTADA + PROBLEMA + COMPARACION + CTA = 4 fijos
+  const valores = VALOR_POOL.slice(0, valoresCount);
+  return [SPEC_PORTADA, SPEC_PROBLEMA, ...valores, SPEC_COMPARACION, SPEC_CTA];
+}
+
+// Mantenido por compatibilidad — devuelve el arco para un slideCount dado.
+export const NARRATIVE_ARC = new Proxy({} as Record<number, SlideRoleSpec[]>, {
+  get: (_target, prop) => {
+    const n = Number(prop);
+    if (Number.isFinite(n)) return buildNarrativeArc(n);
+    return undefined;
+  },
+});

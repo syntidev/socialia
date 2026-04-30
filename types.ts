@@ -39,6 +39,9 @@ export enum CarouselSlideRole {
   VALOR_1      = 'VALOR_1',
   VALOR_2      = 'VALOR_2',
   VALOR_3      = 'VALOR_3',
+  VALOR_4      = 'VALOR_4',
+  VALOR_5      = 'VALOR_5',
+  VALOR_6      = 'VALOR_6',
   COMPARACION  = 'COMPARACION',
   CTA          = 'CTA'
 }
@@ -285,7 +288,7 @@ export interface CarouselSlide {
 
 export interface CarouselConfig {
   topic: string;
-  slideCount: 3 | 5 | 7;
+  slideCount: number; // 5-10
   productType: ProductType;
   postObjective: PostObjective;
 }
